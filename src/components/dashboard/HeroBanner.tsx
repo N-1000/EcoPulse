@@ -3,7 +3,7 @@
 // Banner principal: "Así está el aire en Cali hoy" sobre el mural
 // del Túnel Mundialista, con el logo del proyecto arriba a la derecha.
 //
-// IMAGEN DEL MURAL: coloca la fotografía real en `public/hero-mural.jpg`.
+// IMAGEN DEL MURAL: coloca la fotografía real en `public/images/hero-mural.jpg`.
 // Si el archivo existe, se muestra automáticamente; si no, se renderiza
 // una recreación SVG inspirada en el mural (aves, fauna, flora y figuras).
 // ===================================================
@@ -77,7 +77,7 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {!muralLoaded && <MuralArt />}
         <img
-          src="/hero-mural.jpg"
+          src="/images/hero-mural.jpg"
           alt=""
           aria-hidden="true"
           onLoad={() => setMuralLoaded(true)}
@@ -89,12 +89,17 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
         <div className="absolute inset-0 bg-gradient-to-r from-citrico via-citrico/70 to-transparent" />
       </div>
 
-      {/* Logo del proyecto (esquina superior derecha, como en el mural) */}
-      <div className="absolute top-4 right-5 z-10 hidden sm:block">
-        <div className="bg-white/85 backdrop-blur-sm rounded-xl px-3 py-2 shadow-sm border border-white/60">
-          <BrandLogo size="sm" variant="light" />
+      {/* Logo del proyecto (esquina superior derecha).
+          Solo se muestra sobre el arte SVG de respaldo: si el usuario coloca
+          su foto en public/images/hero-mural.jpg (que ya trae el logo
+          incrustado), este se oculta para no duplicarlo. */}
+      {!muralLoaded && (
+        <div className="absolute top-4 right-5 z-10 hidden sm:block">
+          <div className="bg-white/85 backdrop-blur-sm rounded-xl px-3 py-2 shadow-sm border border-white/60">
+            <BrandLogo size="sm" variant="light" />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Contenido */}
       <div className="relative z-10 p-6 flex flex-col justify-between" style={{ minHeight: '210px' }}>

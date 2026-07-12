@@ -103,15 +103,17 @@ el fondo `MapBackground` y los controles de capas/zoom/leyenda de `MapPage`.
 
 ## 4. Imagen del mural (hero)
 
-`HeroBanner.tsx` intenta cargar **`public/hero-mural.jpg`**:
+`HeroBanner.tsx` intenta cargar **`public/images/hero-mural.jpg`**:
 - Si existe, la foto real del mural se muestra con un degradado amarillo a la
-  izquierda para que el texto sea legible.
+  izquierda para que el texto sea legible, y el logo sobrepuesto de la app se
+  **oculta** (para no duplicar el logo que suele venir incrustado en la foto).
 - Si no existe, se renderiza una **recreación SVG** del mural (componente
-  `MuralArt` en el mismo archivo).
+  `MuralArt` en el mismo archivo) con el logo sobrepuesto.
 
 Para usar la fotografía real del Túnel Mundialista: guarda el archivo como
-`public/hero-mural.jpg` (idealmente ≥1600px de ancho, formato horizontal). No
-hay que tocar código.
+`public/images/hero-mural.jpg` (idealmente ≥1600px de ancho, formato horizontal).
+No hay que tocar código. Todas las imágenes estáticas van en `public/images/`
+(ver el README de esa carpeta).
 
 ---
 
