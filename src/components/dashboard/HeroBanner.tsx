@@ -71,7 +71,7 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
   return (
     <div
       className="relative rounded-2xl overflow-hidden shadow-card"
-      style={{ backgroundColor: '#FFD100', minHeight: '210px' }}
+      style={{ backgroundColor: '#FFD100', minHeight: '235px' }}
     >
       {/* Fondo: mural (foto real si existe; si no, arte SVG) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -81,7 +81,7 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
           alt=""
           aria-hidden="true"
           onLoad={() => setMuralLoaded(true)}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+          className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-500 ${
             muralLoaded ? 'opacity-100' : 'opacity-0'
           }`}
         />
@@ -102,7 +102,7 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
       )}
 
       {/* Contenido */}
-      <div className="relative z-10 p-6 flex flex-col justify-between" style={{ minHeight: '210px' }}>
+      <div className="relative z-10 p-6 flex flex-col justify-between" style={{ minHeight: '235px' }}>
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 leading-tight">
             Así está el aire en Cali hoy 🌿
