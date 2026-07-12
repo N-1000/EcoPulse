@@ -1,14 +1,14 @@
 # Contexto Activo
 
 ## Estado Actual
-El MVP de frontend (Layout, Dashboard, TangaraChat) está implementado con datos mock. Se ha iniciado el **backend en FastAPI** (`backend/`) que consumirá la capa Silver (`tangara_plata`) de ClickHouse. El esqueleto está montado y verificado: configuración tipada, cliente ClickHouse de solo lectura, endpoint `/health` y router de introspección (`/api/meta/*`) para descubrir el esquema real.
+El frontend fue **rediseñado y modularizado por completo** (etapa "solo frontend"): páginas (`HomePage`, `MapPage`), layout con sidebar hamburguesa animado/responsive, chatbot flotante "Tangara AI" (botón fijo del ave, panel que empuja el contenido), hero con el logo "Inteligencia Ambiental Urbana / Cali - Valle del Cauca" y vista "Explorar mapa" con nodos mock (geohash + coordenadas, clusters de calibración). Capa de datos preparada para FastAPI en `src/services/api.ts` + hooks. Documentación completa en `docs/GUIA_FRONTEND.md`. El esqueleto del backend FastAPI (`backend/`) sigue listo y NO se tocó en esta etapa.
 
 ## Enfoque Inmediato
-1. Cargar las credenciales de ClickHouse en `backend/.env` (a partir de `.env.example`).
-2. Introspeccionar el esquema real de `tangara_plata` vía `/api/meta/tables` y `/api/meta/columns`.
-3. Construir los endpoints de datos (nodos + geolocalización, series temporales agregadas, estadísticas) con caché TTL.
-4. Reemplazar los datos mock del frontend por llamadas al backend y sustituir el mapa SVG por un mapa real (Leaflet) con los nodos.
-5. Construir el MVP estrella: "La Ruta Saludable".
+1. (Opcional) Colocar la foto real del mural como `public/hero-mural.jpg`.
+2. Cargar credenciales de ClickHouse en `backend/.env` e introspeccionar `tangara_plata`.
+3. Construir endpoints de datos reales y cambiar `src/services/api.ts` a `fetch()`.
+4. Mapa real (Leaflet/MapLibre) reemplazando solo el lienzo SVG de `MapPage`.
+5. MVP estrella: "La Ruta Saludable"; luego chatbot con IA real (POST /api/chat).
 
 ## Decisiones Recientes
 - Se optó por una arquitectura de frontend puro (Vite + React) para el MVP, facilitando el despliegue rápido.

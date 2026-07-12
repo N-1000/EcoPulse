@@ -20,13 +20,16 @@ Inspirada en la biodiversidad de Cali y los icónicos murales del Túnel Mundial
 
 ## 📦 Estructura del Proyecto
 
-La arquitectura está limpia y modularizada para permitir la futura conexión con bases de datos o ETLs de calidad de aire en tiempo real:
+Arquitectura modular preparada para integrar FastAPI + ClickHouse (ver la guía completa en [`docs/GUIA_FRONTEND.md`](docs/GUIA_FRONTEND.md)):
 
-- `src/types/index.ts`: Interfaces estrictamente tipadas para el chat, contaminantes y comunas.
-- `src/mock/airQualityData.ts`: Datos simulados para 22 comunas de Cali, tendencias de 7 días, histórico mensual y pronóstico de clima.
-- `src/components/Layout.tsx`: Contenedor responsivo de 3 columnas (Sidebar, Dashboard y Chatbot).
-- `src/components/Dashboard.tsx`: Dashboard analítico con mapa interactivo SVG de comunas, gráficos de tendencias y grid de contaminantes.
-- `src/components/TangaraChat.tsx`: Chatbot inteligente que responde con jerga caleña sobre actividades ecológicas ("borondos").
+- `src/pages/`: Vistas de la app — `HomePage` (dashboard), `MapPage` ("Explorar mapa" con los nodos Tangara) y placeholders.
+- `src/components/layout/`: `Layout` (orquestador), `Sidebar` (menú hamburguesa animado y responsive) y `TopBar`.
+- `src/components/dashboard/`: Widgets del dashboard (hero con mural, comunas, tendencias, contaminantes, pronóstico, histórico, noticias).
+- `src/components/chat/`: Chatbot flotante "Tangara AI" (botón fijo del ave + ventana con preguntas sugeridas).
+- `src/hooks/` y `src/services/api.ts`: Capa de datos — hoy mock, punto único de conexión futura con el backend.
+- `src/mock/`: Datos simulados (calidad del aire, nodos con geohash, contenido del chat).
+- `src/types/index.ts`: Interfaces estrictamente tipadas de toda la aplicación.
+- `backend/`: Esqueleto FastAPI + ClickHouse (capa Silver `tangara_plata`) para las siguientes etapas.
 
 ## ⚙️ Instalación y Ejecución Local
 

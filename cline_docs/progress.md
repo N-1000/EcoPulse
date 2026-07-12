@@ -12,6 +12,12 @@
 - [x] Subida a GitHub (repositorio público).
 
 - [x] Esqueleto del backend FastAPI (`backend/`): config tipada, cliente ClickHouse de solo lectura, `/health` y router de introspección `/api/meta/*`. Verificado (arranca y responde).
+- [x] Rediseño y modularización del frontend: `pages/`, `components/{layout,dashboard,chat,common}`, `hooks/`, `services/`, `utils/`.
+- [x] Sidebar con menú hamburguesa animado (escritorio: riel de iconos; móvil: drawer con backdrop).
+- [x] Chatbot flotante "Tangara AI": botón fijo del ave (bottom-left), panel que empuja el contenido en escritorio, preguntas sugeridas, logo en el encabezado.
+- [x] Hero rediseñado con recreación del mural + slot para foto real (`public/hero-mural.jpg`) + logo "Inteligencia Ambiental Urbana / Cali - Valle del Cauca".
+- [x] Vista "Explorar mapa": nodos mock con geohash, clusters de sensores co-ubicados (calibración), panel de detalle del nodo, zoom y leyenda ICA.
+- [x] Documentación para desarrolladores: `docs/GUIA_FRONTEND.md`.
 
 ## Tareas Pendientes / Futuras
 - [ ] Cargar credenciales ClickHouse en `backend/.env` e introspeccionar `tangara_plata`.
