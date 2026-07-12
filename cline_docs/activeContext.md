@@ -1,10 +1,14 @@
 # Contexto Activo
 
 ## Estado Actual
-El MVP de Tangara 2026 ha sido inicializado y desplegado localmente. La estructura base, los tipos, los datos simulados y los tres componentes principales (Layout, Dashboard, TangaraChat) están implementados y funcionales visualmente.
+El MVP de frontend (Layout, Dashboard, TangaraChat) está implementado con datos mock. Se ha iniciado el **backend en FastAPI** (`backend/`) que consumirá la capa Silver (`tangara_plata`) de ClickHouse. El esqueleto está montado y verificado: configuración tipada, cliente ClickHouse de solo lectura, endpoint `/health` y router de introspección (`/api/meta/*`) para descubrir el esquema real.
 
 ## Enfoque Inmediato
-No hay tareas de desarrollo activas en este momento. El proyecto está listo para ser expandido, ya sea añadiendo nuevas vistas al Sidebar, conectando el chatbot a una API real (como OpenAI/Anthropic), o reemplazando los datos estáticos por llamadas a servicios web de calidad del aire.
+1. Cargar las credenciales de ClickHouse en `backend/.env` (a partir de `.env.example`).
+2. Introspeccionar el esquema real de `tangara_plata` vía `/api/meta/tables` y `/api/meta/columns`.
+3. Construir los endpoints de datos (nodos + geolocalización, series temporales agregadas, estadísticas) con caché TTL.
+4. Reemplazar los datos mock del frontend por llamadas al backend y sustituir el mapa SVG por un mapa real (Leaflet) con los nodos.
+5. Construir el MVP estrella: "La Ruta Saludable".
 
 ## Decisiones Recientes
 - Se optó por una arquitectura de frontend puro (Vite + React) para el MVP, facilitando el despliegue rápido.

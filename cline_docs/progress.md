@@ -11,8 +11,14 @@
 - [x] Creación de README.md, LICENSE y archivos de configuración para asistentes IA (este sistema de memoria).
 - [x] Subida a GitHub (repositorio público).
 
+- [x] Esqueleto del backend FastAPI (`backend/`): config tipada, cliente ClickHouse de solo lectura, `/health` y router de introspección `/api/meta/*`. Verificado (arranca y responde).
+
 ## Tareas Pendientes / Futuras
-- [ ] Conectar métricas de calidad de aire con un backend o API real.
+- [ ] Cargar credenciales ClickHouse en `backend/.env` e introspeccionar `tangara_plata`.
+- [ ] Endpoints de datos: nodos+geolocalización, series temporales agregadas, estadísticas, con caché TTL.
+- [ ] Conectar el frontend al backend (reemplazar mock) y mapa real (Leaflet) con nodos.
+- [ ] MVP "La Ruta Saludable" (ruteo evitando zonas de mayor polución).
+- [ ] Modelos de predicción por nodo.
 - [ ] Integrar el TangaraChat con un modelo de lenguaje (LLM) en lugar de respuestas predefinidas.
 - [ ] Desarrollar las vistas faltantes del menú lateral (Mapa detallado, Tendencias avanzadas, Reportes, etc.).
 - [ ] Implementar sistema de autenticación de usuarios.
