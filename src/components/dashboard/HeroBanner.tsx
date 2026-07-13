@@ -8,7 +8,7 @@
 // una recreación SVG inspirada en el mural (aves, fauna, flora y figuras).
 // ===================================================
 import { useState } from 'react';
-import { ChevronRight, Navigation, Wind } from 'lucide-react';
+import { ChevronRight, Navigation } from 'lucide-react';
 import { airQualityMetrics } from '../../mock/airQualityData';
 import { getIcaLevel } from '../../utils/airQuality';
 import BrandLogo from '../common/BrandLogo';
@@ -17,17 +17,27 @@ import BrandLogo from '../common/BrandLogo';
 const MuralArt = () => (
   <svg
     viewBox="0 0 900 220"
-    className="absolute inset-0 w-full h-full"
-    preserveAspectRatio="xMidYMid slice"
+    className="absolute right-0 top-0 h-full w-auto max-w-none"
+    preserveAspectRatio="xMaxYMid meet"
     aria-hidden="true"
   >
+    <defs>
+      <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="#FFD100" stopOpacity="1" />
+        <stop offset="100%" stopColor="#E67E00" stopOpacity="0" />
+      </radialGradient>
+      <linearGradient id="riverGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#0084B4" />
+        <stop offset="100%" stopColor="#009DD4" />
+      </linearGradient>
+    </defs>
     {/* Fondo amarillo mural */}
     <rect width="900" height="220" fill="#FFD100" />
     {/* Colinas verdes */}
     <path d="M0 220 Q120 130 260 185 Q380 230 470 195 L470 220 Z" fill="#1E5E4A" opacity="0.75" />
     <path d="M0 220 Q90 160 200 200 L200 220 Z" fill="#2A7A62" opacity="0.8" />
     {/* Sol / mandala */}
-    <circle cx="620" cy="70" r="52" fill="#E67E00" opacity="0.55" />
+    <circle cx="620" cy="70" r="90" fill="url(#sunGlow)" opacity="0.8" />
     <circle cx="620" cy="70" r="34" fill="#FFD100" opacity="0.9" />
     <circle cx="620" cy="70" r="20" fill="#0084B4" opacity="0.45" />
     {/* Río */}
@@ -81,7 +91,7 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
           alt=""
           aria-hidden="true"
           onLoad={() => setMuralLoaded(true)}
-          className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-500 ${
+          className={`absolute right-0 top-0 h-full w-auto max-w-none object-contain object-right transition-opacity duration-500 ${
             muralLoaded ? 'opacity-100' : 'opacity-0'
           }`}
         />
@@ -114,9 +124,12 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
 
         <div className="flex flex-wrap items-end justify-between gap-4 mt-4">
           {/* ICA Card flotante */}
-          <div className="inline-flex flex-col bg-white/85 backdrop-blur-sm rounded-xl px-5 py-3 shadow-sm border border-white/50 max-w-xs">
+          <div className="inline-flex flex-col bg-white/90 backdrop-blur-md rounded-xl px-5 py-3 shadow-lg border border-white/60 max-w-xs relative group overflow-hidden transition-transform hover:-translate-y-1">
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">
-              <Wind size={13} />
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tangara opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-tangara"></span>
+              </span>
               Índice de Calidad del Aire (ICA)
             </div>
             <div className="flex items-baseline gap-3 mt-1">

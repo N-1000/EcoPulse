@@ -32,9 +32,9 @@ const HistoricoMensual = () => {
           const x = 30 + i * 38;
           const color = levelColor(d.level);
           return (
-            <g key={d.month}>
-              <rect x={x} y={100 - barH} width="22" height={barH} rx="4" fill={color} opacity="0.85" />
-              <text x={x + 11} y="109" textAnchor="middle" fontSize="8" fill="#6B7280">
+            <g key={d.month} className="group cursor-pointer">
+              <rect x={x} y={100 - barH} width="22" height={barH} rx="4" fill={color} opacity="0.85" className="transition-all duration-300 group-hover:opacity-100 group-hover:-translate-y-1" />
+              <text x={x + 11} y="109" textAnchor="middle" fontSize="8" fill="#6B7280" className="group-hover:font-bold transition-all">
                 {d.month}
               </text>
               <text x={x + 11} y={97 - barH} textAnchor="middle" fontSize="8" fill={color} fontWeight="600">

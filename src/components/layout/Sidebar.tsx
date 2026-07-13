@@ -70,14 +70,15 @@ const SidebarContent = ({ collapsed, activePage, onNavigate }: SidebarContentPro
             title={collapsed ? item.label : undefined}
             className={`
               w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-              transition-all duration-150 group relative
+              transition-all duration-150 group relative overflow-hidden
               ${isActive ? 'text-white shadow-sm bg-palma' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}
               ${collapsed ? 'justify-center' : ''}
             `}
             aria-label={item.label}
             aria-current={isActive ? 'page' : undefined}
           >
-            <span className="flex-shrink-0">
+            {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-3/5 bg-white rounded-r-md animate-fade-in shadow-sm" />}
+            <span className="flex-shrink-0 transition-transform duration-200 group-hover:scale-110">
               <NavIcon icon={item.icon} size={17} />
             </span>
             {!collapsed && <span className="truncate text-left">{item.label}</span>}
@@ -117,9 +118,9 @@ const SidebarContent = ({ collapsed, activePage, onNavigate }: SidebarContentPro
       </button>
 
       {/* Perfil */}
-      <div className={`mt-2 mx-1 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors border border-gray-100 ${collapsed ? 'justify-center p-2' : ''}`}>
+      <div className={`mt-2 mx-1 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100 bg-white/50 backdrop-blur-sm group ${collapsed ? 'justify-center p-2' : ''}`}>
         <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm"
+          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-[0_0_10px_rgba(30,94,74,0.3)] ring-2 ring-white group-hover:scale-105 transition-transform"
           style={{ background: 'linear-gradient(135deg, #1E5E4A, #0084B4)' }}
         >
           CI

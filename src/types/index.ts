@@ -66,7 +66,7 @@ export interface ComunaData {
   ica: number;            // Índice de calidad del aire
   level: AirQualityLevel;
   color: string;          // Color HEX para el mapa
-  position: { x: number; y: number }; // Coordenada relativa en SVG del mapa
+  coordinates: GeoPoint;  // Coordenadas reales (Lat/Lng)
   population: number;
   mainContaminant: string;
 }
@@ -228,3 +228,29 @@ export interface SuggestedQuestion {
   text: string;           // Pregunta mostrada al usuario
   answer: string;         // Respuesta simulada (luego la generará la IA real)
 }
+
+export type TransportMode = 'walk' | 'bike' | 'skates' | 'skateboard' | 'escooter';
+
+export interface RoutePoint {
+  lat: number;
+  lng: number;
+  name?: string;
+  isGreen?: boolean;
+  bounds?: [[number, number], [number, number]];
+}
+
+export interface RouteResult {
+  path: [number, number][];
+  distance: number;
+  durations: Record<TransportMode, number>;
+  co2Saved: number;
+  greenCoverage: number;
+  averageICA: number;
+  healthScore: 'A+' | 'A' | 'B' | 'C';
+  destinationName: string;
+  // Tráfico
+  trafficRisk: 'low' | 'medium' | 'high';
+  trafficLabel: string;
+  rushHour: boolean;
+}
+

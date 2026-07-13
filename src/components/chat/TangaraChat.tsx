@@ -69,12 +69,12 @@ const MessageBubble = ({ message }: { message: Message }) => {
 
   if (isAI) {
     return (
-      <div className="flex items-end gap-2 animate-slide-up">
-        <div className="w-7 h-7 rounded-full bg-palma flex items-center justify-center flex-shrink-0">
+      <div className="flex items-end gap-2 animate-bounce-in">
+        <div className="w-7 h-7 rounded-full bg-palma flex items-center justify-center flex-shrink-0 shadow-sm">
           <Bird size={14} className="text-white" />
         </div>
         <div className="flex flex-col max-w-[85%]">
-          <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 text-sm text-gray-700 leading-relaxed shadow-sm">
+          <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 text-sm text-gray-700 leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
             {message.text}
           </div>
           <span className="text-[10px] text-gray-400 mt-1 ml-1">
@@ -86,9 +86,9 @@ const MessageBubble = ({ message }: { message: Message }) => {
   }
 
   return (
-    <div className="flex items-end gap-2 flex-row-reverse animate-slide-up">
+    <div className="flex items-end gap-2 flex-row-reverse animate-bounce-in">
       <div className="flex flex-col items-end max-w-[85%]">
-        <div className="rounded-2xl rounded-br-sm px-4 py-3 text-sm text-gray-800 leading-relaxed shadow-sm bg-pastel">
+        <div className="bg-pastel/90 backdrop-blur-sm rounded-2xl rounded-br-sm px-4 py-3 text-sm text-gray-800 leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-white/50">
           {message.text}
         </div>
         <span className="text-[10px] text-gray-400 mt-1 mr-1">

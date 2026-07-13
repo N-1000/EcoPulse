@@ -10,22 +10,22 @@
 - [x] Desarrollo del Layout general y navegación lateral (`src/components/Layout.tsx`).
 - [x] Creación de README.md, LICENSE y archivos de configuración para asistentes IA (este sistema de memoria).
 - [x] Subida a GitHub (repositorio público).
-
-- [x] Esqueleto del backend FastAPI (`backend/`): config tipada, cliente ClickHouse de solo lectura, `/health` y router de introspección `/api/meta/*`. Verificado (arranca y responde).
-- [x] Rediseño y modularización del frontend: `pages/`, `components/{layout,dashboard,chat,common}`, `hooks/`, `services/`, `utils/`.
+- [x] Esqueleto del backend FastAPI (`backend/`): config tipada, cliente ClickHouse de solo lectura, `/health` y router de introspección `/api/meta/*`.
+- [x] Rediseño y modularización del frontend: `pages/`, `components/`, `hooks/`, `services/`, `utils/`.
 - [x] Sidebar con menú hamburguesa animado (escritorio: riel de iconos; móvil: drawer con backdrop).
-- [x] Chatbot flotante "Tangara AI": botón fijo del ave (bottom-left), panel que empuja el contenido en escritorio, preguntas sugeridas, logo en el encabezado.
-- [x] Hero rediseñado con recreación del mural + slot para foto real (`public/hero-mural.jpg`) + logo "Inteligencia Ambiental Urbana / Cali - Valle del Cauca".
-- [x] Vista "Explorar mapa": nodos mock con geohash, clusters de sensores co-ubicados (calibración), panel de detalle del nodo, zoom y leyenda ICA.
-- [x] Documentación para desarrolladores: `docs/GUIA_FRONTEND.md`.
+- [x] Chatbot flotante "Tangara AI" en el frontend.
+- [x] Hero rediseñado con recreación del mural y logo "Inteligencia Ambiental Urbana / Cali - Valle del Cauca".
+- [x] Conexión del frontend al backend a través de `src/services/api.ts` (API real con fallback local automático si el backend está offline).
+- [x] Integración de mapa real interactivo con Leaflet (`react-leaflet`) renderizando sensores (nodos) y clusters por Geohash.
+- [x] **MVP "La Ruta Saludable"**: Motor de ruteo multipropósito (peatón, bicicleta, carro, skates, scooter) consultando OSRM en tiempo real según el perfil.
+- [x] **Tráfico en tiempo real/horarios**: Algoritmo en `traffic.py` que calcula riesgos de tráfico usando Overpass API (OSM tags) y multiplicadores basados en la zona horaria y hora local de Cali.
+- [x] **Zonas Verdes Exactas**: Geometría exacta con rectángulos (`<Rectangle>` de Leaflet) en el mapa basados en Bounding Boxes precisos de 15 parques de Cali. Algoritmo de cobertura verde (`greenCoverage`) basado en intersección rectangular estricta.
+- [x] Limpieza del repositorio (remoción de READMEs/LICENSE redundantes de paquetes y carpetas internas).
 
 ## Tareas Pendientes / Futuras
-- [ ] Cargar credenciales ClickHouse en `backend/.env` e introspeccionar `tangara_plata`.
-- [ ] Endpoints de datos: nodos+geolocalización, series temporales agregadas, estadísticas, con caché TTL.
-- [ ] Conectar el frontend al backend (reemplazar mock) y mapa real (Leaflet) con nodos.
-- [ ] MVP "La Ruta Saludable" (ruteo evitando zonas de mayor polución).
-- [ ] Modelos de predicción por nodo.
-- [ ] Integrar el TangaraChat con un modelo de lenguaje (LLM) en lugar de respuestas predefinidas.
-- [ ] Desarrollar las vistas faltantes del menú lateral (Mapa detallado, Tendencias avanzadas, Reportes, etc.).
-- [ ] Implementar sistema de autenticación de usuarios.
-- [ ] Asegurar accesibilidad (a11y) y probar en múltiples dispositivos móviles.
+- [ ] Cargar credenciales reales de ClickHouse en `backend/.env` e introspeccionar base de datos de producción (`tangara_plata`).
+- [ ] Integrar el TangaraChat con un modelo de lenguaje real (LLM / OpenAI o Gemini API con Tool Calling / Function Calling para consultar la API de Tangara en vivo).
+- [ ] Modelos de predicción predictiva por nodo (FASE 4 - IA - forecasting de series temporales).
+- [ ] Desarrollar firmware real del ESP32 (Fase 7 - IoT) para transmitir mediciones físicas en vivo al endpoint de ingesta.
+- [ ] Desarrollar la aplicación móvil nativa en Flutter (Fase 6).
+- [ ] Implementar sistema de autenticación de usuarios completo con JWT.

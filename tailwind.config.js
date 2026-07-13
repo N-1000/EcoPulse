@@ -38,6 +38,11 @@ export default {
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-up': 'slideUp 0.3s ease-out',
         'pulse-dot': 'pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'river-flow': 'dashFlow 30s linear infinite',
+        'wind-flow': 'dashFlow 15s linear infinite',
+        'halo-pulse': 'haloPulse 3s ease-in-out infinite',
+        'bounce-in': 'bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+        'ring-pulse': 'ringPulse 2s infinite',
       },
       keyframes: {
         fadeIn: {
@@ -52,6 +57,23 @@ export default {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.4' },
         },
+        dashFlow: {
+          'to': { strokeDashoffset: '-1000' },
+        },
+        haloPulse: {
+          '0%': { transform: 'scale(0.85)', opacity: '0.6' },
+          '50%': { transform: 'scale(1.2)', opacity: '0.1' },
+          '100%': { transform: 'scale(0.85)', opacity: '0.6' },
+        },
+        bounceIn: {
+          '0%': { opacity: '0', transform: 'scale(0.9) translateY(10px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
+        ringPulse: {
+          '0%': { boxShadow: '0 0 0 0 rgba(30, 94, 74, 0.5)' },
+          '70%': { boxShadow: '0 0 0 15px rgba(30, 94, 74, 0)' },
+          '100%': { boxShadow: '0 0 0 0 rgba(30, 94, 74, 0)' },
+        }
       },
     },
   },

@@ -30,9 +30,9 @@ const FloatingChatButton = ({ isOpen, onToggle }: FloatingChatButtonProps) => (
     aria-label={isOpen ? 'Cerrar Tangara AI' : 'Abrir Tangara AI'}
     aria-expanded={isOpen}
   >
-    {/* Anillo decorativo cuando está cerrado */}
+    {/* Anillo decorativo animado cuando está cerrado */}
     {!isOpen && (
-      <span className="absolute -inset-1 rounded-full border-2 border-palma/30" />
+      <span className="absolute -inset-1 rounded-full animate-ring-pulse pointer-events-none" />
     )}
     <Bird size={24} className="text-white relative z-10" />
   </button>

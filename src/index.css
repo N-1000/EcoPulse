@@ -1,3 +1,5 @@
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,7 +17,8 @@
 
   body {
     font-family: 'Inter', system-ui, sans-serif;
-    background-color: #E5E7EB;
+    background: radial-gradient(circle at top left, #F0F4F8, #E2E8F0);
+    background-attachment: fixed;
     color: #1F2937;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -40,11 +43,11 @@
 
 @layer components {
   .card {
-    @apply bg-white rounded-2xl shadow-card;
+    @apply bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60;
   }
 
   .card-hover {
-    @apply hover:shadow-card-hover transition-shadow duration-200;
+    @apply hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300;
   }
 
   .badge-buena {
@@ -71,4 +74,56 @@
 @keyframes typing {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Estilos Premium para el Mapa */
+@keyframes windFlow {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.wind-stream {
+  stroke-dasharray: 10, 20;
+  animation: windFlow 12s linear infinite;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 1px rgba(14, 165, 233, 0.2));
+}
+
+.marker-halo {
+  transform-origin: center;
+  animation: markerGlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes markerGlow {
+  0%, 100% {
+    transform: scale(0.85);
+    opacity: 0.15;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.45;
+  }
+}
+
+/* ── Tr\u00e1fico en el mapa \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+/* Marcadores de carro pulsantes en zonas congestionadas */
+@keyframes trafficPulse {
+  0%, 100% { transform: scale(1);   box-shadow: 0 0 0 4px rgba(239,68,68,0.25); }
+  50%       { transform: scale(1.2); box-shadow: 0 0 0 8px rgba(239,68,68,0.08); }
+}
+
+/* Guiones animados que corren sobre la l\u00ednea de la ruta */
+.route-dash-anim {
+  stroke-dashoffset: 0;
+  animation: dashFlow 1.2s linear infinite;
+}
+
+@keyframes dashFlow {
+  from { stroke-dashoffset: 22; }
+  to   { stroke-dashoffset: 0; }
 }

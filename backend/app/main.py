@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.db.clickhouse import ping
-from app.routers import meta
+from app.routers import meta, nodes, routing
 
 settings = get_settings()
 
@@ -27,6 +27,8 @@ app.add_middleware(
 )
 
 app.include_router(meta.router)
+app.include_router(nodes.router)
+app.include_router(routing.router)
 
 
 @app.get("/health", tags=["salud"])

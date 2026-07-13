@@ -58,14 +58,20 @@ const TendenciaSemana = () => {
         </div>
       </div>
 
-      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ height: '130px' }}>
+      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full group" style={{ height: '130px' }}>
+        <defs>
+          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0084B4" stopOpacity="0.3"/>
+            <stop offset="100%" stopColor="#0084B4" stopOpacity="0.0"/>
+          </linearGradient>
+        </defs>
         {/* Grid lines */}
         {[0, 25, 50, 75, 100].map(pct => {
           const y = padY + chartH * (1 - pct / 100);
           return (
             <g key={pct}>
-              <line x1={padX} y1={y} x2={svgW - padX} y2={y} stroke="#F3F4F6" strokeWidth="1" />
-              <text x={padX - 5} y={y + 3} textAnchor="end" fontSize="8" fill="#9CA3AF">
+              <line x1={padX} y1={y} x2={svgW - padX} y2={y} stroke="#F1F5F9" strokeWidth="1" />
+              <text x={padX - 5} y={y + 3} textAnchor="end" fontSize="8" fill="#94A3B8">
                 {Math.round(minVal + range * (pct / 100))}
               </text>
             </g>
@@ -73,7 +79,7 @@ const TendenciaSemana = () => {
         })}
 
         {/* Área bajo la curva */}
-        <path d={areaPath} fill="#0084B4" opacity="0.08" />
+        <path d={areaPath} fill="url(#areaGrad)" className="transition-all duration-300 group-hover:opacity-80" />
 
         {/* Línea */}
         <polyline
