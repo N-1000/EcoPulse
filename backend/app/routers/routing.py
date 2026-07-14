@@ -11,8 +11,8 @@ def _get_nodes() -> List[Dict[str, Any]]:
     """Intenta obtener nodos de ClickHouse, usa mock como fallback."""
     if ping():
         try:
-            from app.db.clickhouse import query_rows
-            rows = query_rows("SELECT * FROM tangara_plata.nodos")
+            from app.services.clickhouse_nodes import get_nodos_clickhouse
+            rows = get_nodos_clickhouse()
             if rows:
                 return rows
         except Exception:

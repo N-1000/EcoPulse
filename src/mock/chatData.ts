@@ -1,10 +1,7 @@
 // ===================================================
 // TANGARA 2026 - mock/chatData.ts
-// Contenido simulado del chatbot (Tangara AI).
-// Aquí se editan: mensaje de bienvenida, preguntas sugeridas,
-// planes rápidos ("borondos") y respuestas genéricas.
-// Cuando se integre la IA real, este archivo se reemplaza por
-// llamadas a `src/services/api.ts` (askChatbot).
+// Texto de la interfaz del chatbot Tangara AI.
+// Las respuestas se generarán desde el backend cuando se conecte la IA real.
 // ===================================================
 import type { SuggestedQuestion } from '../types';
 
@@ -25,41 +22,32 @@ export const WELCOME_MESSAGE =
 export const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
   {
     id: 'sq1',
-    text: '¿Qué barrios tuvieron mayor contaminación durante diciembre de 2024?',
+    text: '¿Cuál es el nodo con mayor contaminación ahora mismo?',
     answer:
-      '¡Buena pregunta, ciudadano! 📊 Según el histórico simulado, en diciembre de 2024 ' +
-      'los niveles más altos de PM2.5 se registraron en el centro y el oriente de Cali ' +
-      '(zonas de alto tráfico y actividad comercial), con promedios en nivel Moderado a ' +
-      'Dañino para grupos sensibles. Cuando conecte la base de datos real de Tangara podré ' +
-      'darte el detalle exacto por barrio y por nodo. 😉',
+      '📊 Estoy consultando los datos en tiempo real de la red Tángara... ' +
+      'Revisa el mapa para ver el semáforo actualizado por nodo.',
   },
   {
     id: 'sq2',
     text: '¿Cuál será la calidad del aire mañana?',
     answer:
-      '🔮 El pronóstico simulado para mañana estima un ICA de 62 (Moderado), con máxima de ' +
-      '27°C. Recomendación: actividades al aire libre con precaución, especialmente para ' +
-      'grupos sensibles. Muy pronto este pronóstico saldrá de un modelo predictivo real ' +
-      'entrenado con los datos históricos de la red Tangara.',
+      '🔮 El modelo predictivo de Tángara estima la calidad del aire para las próximas 24 horas. ' +
+      'Ve a la sección "Predicciones" para ver el pronóstico detallado por zona.',
   },
   {
     id: 'sq3',
     text: '¿Qué ruta es más saludable para salir a correr?',
     answer:
-      '🏃 ¡La Ruta Saludable es mi especialidad! Con las condiciones actuales, las zonas con ' +
-      'mejor aire son Pance (ICA 16) y Ciudad Jardín (ICA 23). Te recomiendo correr por el ' +
-      'corredor del río Pance o la ciclovía de la Cra 100 antes de las 9am. Evita el centro, ' +
-      'que hoy está en nivel Dañino para grupos sensibles. Pronto podré trazarte la ruta ' +
-      'cuadra a cuadra desde tu ubicación. 🗺️',
+      '🏃 ¡La Ruta Saludable es mi especialidad! Dirígete a la sección "Mapa" y activa la ' +
+      'herramienta de Ruta Saludable para trazar el camino con menor ICA desde tu ubicación.',
   },
   {
     id: 'sq4',
-    text: '¿Qué nodo presentó más fallas este año?',
+    text: '¿Qué comunas tienen el aire más limpio en Cali?',
     answer:
-      '🔧 En los datos simulados, el nodo TANGARA_302 (Alfonso López, Comuna 7) es el que más ' +
-      'interrupciones ha tenido: está inactivo desde el 10 de julio. También hay 3 nodos en ' +
-      'calibración en Univalle que comparten ubicación — eso es normal, están en banco de ' +
-      'pruebas antes de instalarse definitivamente.',
+      '🌿 Históricamente, las comunas del sur (Pance, Ciudad Jardín) y el occidente tienen ' +
+      'menor concentración de PM2.5 gracias a la influencia de los vientos de los Farallones. ' +
+      'Consulta "Estadísticas" para el ranking actualizado.',
   },
 ];
 
@@ -70,8 +58,8 @@ export const QUICK_OPTIONS: QuickOption[] = [
     emoji: '🏞️',
     query: 'Plan Pance',
     responses: [
-      '¡Uff, Pance es una verraquera, ciudadano! 🌿 Con un ICA de 58 (Moderado), te recomiendo ir tempranito antes de las 10am. Lleva hidratación, usa bloqueador y si eres de grupos sensibles, mejor esperar a que baje el ICA. El río está bueno pa\' refrescarse, eso sí.',
-      '¡Mirá ve, qué plan tan chuzón! 🏞️ Pance está prendido. El ICA está moderado (58), así que pa grupos sensibles vamos con calma. Lleva un tapaboca ligero si es de los que les da la fiebre. ¡Y no olvides recoger la basura, que Cali es de todos!',
+      '¡Uff, Pance es una verraquera, ciudadano! 🌿 Consulta el sensor más cercano en el mapa para ver el ICA en tiempo real antes de salir. El río está bueno pa\' refrescarse, eso sí.',
+      '¡Mirá ve, qué plan tan chuzón! 🏞️ Revisa el semáforo del nodo Pance en el mapa. Si está verde, ¡vamos! ¡Y no olvides recoger la basura, que Cali es de todos!',
     ],
   },
   {
@@ -79,8 +67,8 @@ export const QUICK_OPTIONS: QuickOption[] = [
     emoji: '🥾',
     query: 'Caminata Ecológica',
     responses: [
-      '¡Qué calidoso ese plan! 🥾 Para una caminata ecológica con el ICA actual en 58, te recomiendo los Farallones de Cali o el Bosque Municipal. La madrugada o el tardecito (después de las 4pm) son los mejores horarios porque el ozono baja. ¡Lleva bastante agua, parcero!',
-      '¡Sí señor, a caminar se dijo! 🌄 Con aire moderado, la caminata va bien para la mayoría. Evita zonas de alto tráfico como la Calle 5a. Los cerros tutelares son una delicia visual y el aire allá arriba está más fresco. ¡Hay que aprovechar que Cali tiene esa variedad!',
+      '¡Qué calidoso ese plan! 🥾 Antes de salir, revisa el ICA de tu zona en el mapa Tángara. La madrugada o el tardecito (después de las 4pm) suelen ser los mejores horarios. ¡Lleva bastante agua, parcero!',
+      '¡Sí señor, a caminar se dijo! 🌄 Usa la Ruta Saludable del mapa para evitar zonas de alto tráfico. Los cerros tutelares tienen el aire más fresco de la ciudad.',
     ],
   },
   {
@@ -88,8 +76,8 @@ export const QUICK_OPTIONS: QuickOption[] = [
     emoji: '🚴',
     query: 'Ruta en Bici',
     responses: [
-      '¡Ay, parcero, en bici por Cali es una chimba! 🚴 Con ICA 58, si eres ciclista frecuente, te recomiendo la Ciclovía del río Cali o la ruta hacia Ciudad Jardín. Usa tapaboca deportivo liviano y sal antes de las 7am cuando el tráfico y la contaminación están bajos. ¡El MIO te da el resto!',
-      '¡Ruta en bici, qué bello plan, causita! 🚲 El Corredor Verde de la Carrera 100 está espectacular. Eso sí, con el ICA moderado de hoy, evita la Avenida Ciudad de Cali a las horas pico. Tempranito en la mañana es tu mejor ventana. ¡Y casco, que eso es ley!',
+      '¡Ay, parcero, en bici por Cali es una chimba! 🚴 Activa la modalidad "Bicicleta" en la Ruta Saludable del mapa para encontrar el camino con mejor calidad del aire. ¡Y casco, que eso es ley!',
+      '¡Ruta en bici, qué bello plan, causita! 🚲 Consulta el mapa para ver qué nodos están en verde hoy. Sal tempranito antes de las 7am cuando el tráfico y la contaminación están bajos.',
     ],
   },
   {
@@ -97,17 +85,17 @@ export const QUICK_OPTIONS: QuickOption[] = [
     emoji: '🗺️',
     query: 'Turístico / Borondo',
     responses: [
-      '¡Eso es lo que necesitaba escuchar, el borondo! 🗺️ Para un recorrido turístico con este aire, te recomiendo: 1) San Antonio (callejuelas de arte ✨), 2) La Loma de la Cruz (vista épica), 3) Barrio Granada (gastronomía brutal). El centro también está bacano pero lleva tapaboca cerca del Mercado. ¡Cali es verraca!',
-      '¡Viva Cali y las que se menean! 🎉 Borondo completo: empieza en el Museo La Tertulia, sube al Cristo Rey para ver toda la ciudad, y termina en Juanchito si quieres la versión nocturna. Con el ICA de hoy en 58, el plan está verde. ¡Lleva hidratación y no dejes de probar el lulada!',
+      '¡Eso es lo que necesitaba escuchar, el borondo! 🗺️ Revisa el semáforo del mapa Tángara para los barrios del plan: San Antonio, La Loma de la Cruz, Barrio Granada. Si están en verde, ¡vamos que Cali es verraca!',
+      '¡Viva Cali! 🎉 Antes del borondo, chequea el ICA en el mapa. Empieza en el Museo La Tertulia, sube al Cristo Rey y termina donde el cuerpo aguante. ¡Hidratación y protector solar!',
     ],
   },
 ];
 
 /** Respuestas genéricas para texto libre no reconocido. */
 export const GENERIC_RESPONSES: string[] = [
-  '¡Hola, ciudadano! 🌿 Basándome en el ICA de hoy en 58 (Moderado), te recomiendo un borondo activo pero con precaución en zonas de mayor tráfico. ¿Qué te gustaría hacer? ¿Caminata o bici?',
-  '¡Claro que sí, parcero! Con el aire en nivel moderado, hay varias opciones bacanas pa disfrutar Cali sin riesgos. ¿Quieres que te cuente del plan al Pance o prefieres algo en el centro?',
-  '¡Mirá ve! La calidad del aire en este momento es moderada (ICA 58). Los grupos sensibles deben tomar precauciones, pero para la mayoría el ambiente está bien. ¿En qué te puedo ayudar?',
+  '¡Hola, ciudadano! 🌿 Revisa el mapa Tángara para ver la calidad del aire en tiempo real en tu zona. ¿Qué te gustaría hacer hoy?',
+  '¡Claro que sí, parcero! Consulta el semáforo ICA en el mapa para planear tu actividad de forma segura. ¿Caminata, bici o borondo?',
+  '¡Mirá ve! La red Tángara tiene datos en tiempo real del aire de Cali. ¿En qué te puedo ayudar?',
   '¡Qué nota, ciudadano! 🌺 Tangara AI está aquí para ayudarte a explorar Cali de forma inteligente y ecológica. Cuéntame más sobre qué plan tienes en mente.',
-  '¡Eso está chuzón! Para esa actividad con el ICA actual, lo mejor es hacerlo en la mañana temprano o en la tarde después de las 4pm. ¿Necesitas más detalles del recorrido?',
+  '¡Eso está chuzón! Para esa actividad, lo mejor es revisar el ICA en el mapa antes de salir. ¿Necesitas más información?',
 ];

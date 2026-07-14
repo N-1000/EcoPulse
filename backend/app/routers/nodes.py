@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 from typing import List, Dict, Any
-from app.db.clickhouse import ping, query_rows
+from app.db.clickhouse import ping
 from app.services.mock_data import TANGARA_NODES
+from app.services.clickhouse_nodes import get_nodos_clickhouse
 
 router = APIRouter(prefix="/api/nodes", tags=["nodos"])
 
@@ -13,10 +14,7 @@ async def get_nodes() -> List[Dict[str, Any]]:
     """
     if ping():
         try:
-            # Aquí iría la consulta real a ClickHouse
-            # Para fines de este MVP, si hay ClickHouse usamos los datos estructurados.
-            # En producción: query_rows("SELECT id, name, geohash, status, ... FROM tangara_plata.nodos")
-            rows = query_rows("SELECT * FROM tangara_plata.nodos")
+            rows = get_nodos_clickhouse()
             if rows:
                 return rows
         except Exception as e:

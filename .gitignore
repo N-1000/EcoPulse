@@ -41,3 +41,7 @@ __pycache__/
 # Node portable
 node-v*-win-x64/
 
+# Secrets / credentials
+other/env
+
+

@@ -104,6 +104,7 @@ const _calcRouteLocal = (start: [number, number], end: [number, number], destNam
     const nearPark = CALI_PARKS.some(p => _haversine(pt[0], pt[1], p.lat, p.lng) < 0.4);
     if (nearPark) greenPts++;
     const nearest = tangaraNodes.reduce((best, n) => {
+      if (!n.coordinates) return best;
       const d = _haversine(pt[0], pt[1], n.coordinates.lat, n.coordinates.lng);
       return d < best.d ? { d, ica: n.measurements.ica } : best;
     }, { d: Infinity, ica: 50 });

@@ -18,6 +18,15 @@ import TangaraChat from '../chat/TangaraChat';
 import FloatingChatButton from '../chat/FloatingChatButton';
 import HomePage from '../../pages/HomePage';
 import MapPage from '../../pages/MapPage';
+import AirQualityPage from '../../pages/AirQualityPage';
+import TrendsPage from '../../pages/TrendsPage';
+import PredictionsPage from '../../pages/PredictionsPage';
+import StatsPage from '../../pages/StatsPage';
+import ReportsPage from '../../pages/ReportsPage';
+import EducationPage from '../../pages/EducationPage';
+import ParticipatePage from '../../pages/ParticipatePage';
+import NewsPage from '../../pages/NewsPage';
+import AboutPage from '../../pages/AboutPage';
 import PlaceholderPage from '../../pages/PlaceholderPage';
 import type { PageId } from '../../types';
 
@@ -57,6 +66,24 @@ const Layout = () => {
         return <HomePage onExploreMap={() => setActivePage('mapa')} />;
       case 'mapa':
         return <MapPage />;
+      case 'calidad-aire':
+        return <AirQualityPage />;
+      case 'tendencias':
+        return <TrendsPage />;
+      case 'predicciones':
+        return <PredictionsPage />;
+      case 'estadisticas':
+        return <StatsPage />;
+      case 'reportes':
+        return <ReportsPage />;
+      case 'educacion':
+        return <EducationPage />;
+      case 'participa':
+        return <ParticipatePage />;
+      case 'noticias':
+        return <NewsPage />;
+      case 'sobre':
+        return <AboutPage />;
       default:
         return <PlaceholderPage title={PLACEHOLDER_TITLES[activePage] ?? 'Sección'} />;
     }
