@@ -1,5 +1,5 @@
 // ===================================================
-// TANGARA 2026 - pages/ParticipatePage.tsx
+// ECOPULSE 2026 - pages/ParticipatePage.tsx
 // Participación Ciudadana y Reporte de Quemas
 // ===================================================
 import { useState } from 'react';

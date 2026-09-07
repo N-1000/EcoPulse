@@ -1,16 +1,24 @@
 // ===================================================
-// TANGARA 2026 - pages/NewsPage.tsx
+// ECOPULSE 2026 - pages/NewsPage.tsx
 // Novedades y Noticias de Calidad del Aire de Cali
 // ===================================================
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Newspaper, Search, Filter } from 'lucide-react';
-import { news as MOCK_NEWS } from '../mock/airQualityData';
+import { fetchLiveNews } from '../services/api';
+import type { NewsItem } from '../types';
 
 const NewsPage = () => {
+  const [newsList, setNewsList] = useState<NewsItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todas');
 
-  const filteredNews = MOCK_NEWS.filter(n => {
+  useEffect(() => {
+    fetchLiveNews().then(items => {
+      if (items) setNewsList(items);
+    });
+  }, []);
+
+  const filteredNews = newsList.filter(n => {
     const matchesSearch = n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           n.summary.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'todas' || n.category.toLowerCase() === selectedCategory.toLowerCase();

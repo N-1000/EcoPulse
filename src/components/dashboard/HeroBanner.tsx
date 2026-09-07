@@ -1,160 +1,140 @@
 // ===================================================
-// TANGARA 2026 - components/dashboard/HeroBanner.tsx
-// Banner principal: "Así está el aire en Cali hoy" sobre el mural
-// del Túnel Mundialista, con el logo del proyecto arriba a la derecha.
-//
-// IMAGEN DEL MURAL: coloca la fotografía real en `public/images/hero-mural.jpg`.
-// Si el archivo existe, se muestra automáticamente; si no, se renderiza
-// una recreación SVG inspirada en el mural (aves, fauna, flora y figuras).
+// ECOPULSE 2026 - components/dashboard/HeroBanner.tsx
+// Hero inmersivo 100vh (Full Viewport): imagen panorámica
+// completa de Cali, titulares, píldora ICA y botón de scroll.
 // ===================================================
-import { useState } from 'react';
-import { ChevronRight, Navigation } from 'lucide-react';
-import { airQualityMetrics } from '../../mock/airQualityData';
+import { useAirQuality } from '../../hooks/useAirQuality';
 import { getIcaLevel } from '../../utils/airQuality';
-import BrandLogo from '../common/BrandLogo';
-
-/** Recreación SVG del mural (fallback cuando no existe public/hero-mural.jpg). */
-const MuralArt = () => (
-  <svg
-    viewBox="0 0 900 220"
-    className="absolute right-0 top-0 h-full w-auto max-w-none"
-    preserveAspectRatio="xMaxYMid meet"
-    aria-hidden="true"
-  >
-    <defs>
-      <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#FFD100" stopOpacity="1" />
-        <stop offset="100%" stopColor="#E67E00" stopOpacity="0" />
-      </radialGradient>
-      <linearGradient id="riverGrad" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor="#0084B4" />
-        <stop offset="100%" stopColor="#009DD4" />
-      </linearGradient>
-    </defs>
-    {/* Fondo amarillo mural */}
-    <rect width="900" height="220" fill="#FFD100" />
-    {/* Colinas verdes */}
-    <path d="M0 220 Q120 130 260 185 Q380 230 470 195 L470 220 Z" fill="#1E5E4A" opacity="0.75" />
-    <path d="M0 220 Q90 160 200 200 L200 220 Z" fill="#2A7A62" opacity="0.8" />
-    {/* Sol / mandala */}
-    <circle cx="620" cy="70" r="90" fill="url(#sunGlow)" opacity="0.8" />
-    <circle cx="620" cy="70" r="34" fill="#FFD100" opacity="0.9" />
-    <circle cx="620" cy="70" r="20" fill="#0084B4" opacity="0.45" />
-    {/* Río */}
-    <path d="M700 220 Q740 170 810 160 Q870 152 900 120 L900 220 Z" fill="#0084B4" opacity="0.55" />
-    <path d="M730 220 Q770 185 830 175 Q880 168 900 150 L900 220 Z" fill="#009DD4" opacity="0.4" />
-    {/* Rostros / figuras estilizadas */}
-    <ellipse cx="450" cy="120" rx="55" ry="75" fill="#B45309" opacity="0.55" />
-    <ellipse cx="530" cy="130" rx="42" ry="62" fill="#92400E" opacity="0.45" />
-    <circle cx="530" cy="112" r="16" fill="#0084B4" opacity="0.5" />
-    {/* Pájaro tangara grande */}
-    <g opacity="0.85">
-      <ellipse cx="120" cy="95" rx="38" ry="26" fill="#0084B4" />
-      <circle cx="150" cy="78" r="14" fill="#111827" />
-      <path d="M158 76 L178 72 L160 84 Z" fill="#374151" />
-      <path d="M88 92 Q60 76 48 96 Q72 104 88 100 Z" fill="#009DD4" />
-      <ellipse cx="118" cy="102" rx="22" ry="12" fill="#CBE4F9" opacity="0.9" />
-    </g>
-    {/* Flor / orquídea */}
-    <g opacity="0.7">
-      <circle cx="815" cy="70" r="12" fill="#DB2777" />
-      <ellipse cx="800" cy="55" rx="12" ry="18" fill="#EC4899" transform="rotate(-30 800 55)" />
-      <ellipse cx="830" cy="55" rx="12" ry="18" fill="#EC4899" transform="rotate(30 830 55)" />
-      <ellipse cx="815" cy="92" rx="12" ry="18" fill="#EC4899" />
-    </g>
-    {/* Hojas tropicales */}
-    <path d="M330 0 Q370 60 340 120 Q300 60 330 0Z" fill="#1E5E4A" opacity="0.4" />
-    <path d="M700 0 Q760 50 750 120 Q700 80 700 0Z" fill="#1E5E4A" opacity="0.45" />
-    <path d="M760 10 Q815 65 795 140 Q750 95 760 10Z" fill="#2A7A62" opacity="0.4" />
-  </svg>
-);
+import { ChevronDown } from 'lucide-react';
 
 interface HeroBannerProps {
-  /** Navega a la vista "Explorar mapa". */
   onExploreMap: () => void;
 }
 
 const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
-  const icaInfo = getIcaLevel(airQualityMetrics.icaGeneral);
-  const [muralLoaded, setMuralLoaded] = useState(false);
+  const { metrics } = useAirQuality();
+  const icaInfo = getIcaLevel(metrics.icaGeneral);
+
+  const scrollToDatos = () => {
+    document.getElementById('sec-datos')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
-    <div
-      className="relative rounded-2xl overflow-hidden shadow-card"
-      style={{ backgroundColor: '#FFD100', minHeight: '235px' }}
-    >
-      {/* Fondo: mural (foto real si existe; si no, arte SVG) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {!muralLoaded && <MuralArt />}
-        <img
-          src="/images/hero-mural.jpg"
-          alt=""
-          aria-hidden="true"
-          onLoad={() => setMuralLoaded(true)}
-          className={`absolute right-0 top-0 h-full w-auto max-w-none object-contain object-right transition-opacity duration-500 ${
-            muralLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
-        {/* Degradado para legibilidad del texto a la izquierda */}
-        <div className="absolute inset-0 bg-gradient-to-r from-citrico via-citrico/70 to-transparent" />
-      </div>
+    <div className="relative w-full min-h-screen flex flex-col justify-between overflow-hidden bg-[#162A1F]">
 
-      {/* Logo del proyecto (esquina superior derecha).
-          Solo se muestra sobre el arte SVG de respaldo: si el usuario coloca
-          su foto en public/images/hero-mural.jpg (que ya trae el logo
-          incrustado), este se oculta para no duplicarlo. */}
-      {!muralLoaded && (
-        <div className="absolute top-4 right-5 z-10 hidden sm:block">
-          <div className="bg-white/85 backdrop-blur-sm rounded-xl px-3 py-2 shadow-sm border border-white/60">
-            <BrandLogo size="sm" variant="light" />
+      {/* ── Nueva Ilustración HD de Cali (16:9 de ultra alta resolución) ── */}
+      <img
+        src="/images/cali.png"
+        alt="Santiago de Cali - Cristo Rey y Farallones"
+        className="absolute inset-0 w-full h-full object-cover object-[center_35%] opacity-95 scale-100"
+      />
+
+      {/* ── Sombra superior para alto contraste del título ── */}
+      <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-black/55 via-black/25 to-transparent pointer-events-none" />
+
+      {/* ── Sombra inferior suave que conecta con el fondo crema ── */}
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#F2E8D5] via-[#F2E8D5]/65 to-transparent pointer-events-none" />
+
+      {/* ── Contenido central editorial a pantalla completa ── */}
+      <div className="relative z-10 w-full max-w-[1380px] mx-auto flex-1 flex flex-col justify-between items-center text-center px-4 sm:px-6 pt-16 pb-8">
+
+        {/* Encabezado superior */}
+        <div className="flex flex-col items-center max-w-3xl mt-2">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/45 backdrop-blur-md border border-white/25 text-white text-xs font-semibold uppercase tracking-widest mb-5 shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            EcoPulse · Red Ambiental de Cali
           </div>
-        </div>
-      )}
 
-      {/* Contenido */}
-      <div className="relative z-10 p-6 flex flex-col justify-between" style={{ minHeight: '235px' }}>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 leading-tight">
-            Así está el aire en Cali hoy 🌿
+          <h1
+            className="text-4xl sm:text-6xl md:text-7xl font-bold text-white tracking-tight leading-[1.08] mb-4 select-none drop-shadow-2xl"
+            style={{ fontFamily: '"Playfair Display", Georgia, serif', textShadow: '0 4px 20px rgba(0,0,0,0.6)' }}
+          >
+            Respira la ciudad con certeza.
           </h1>
-          <p className="text-sm text-gray-800 font-medium mt-0.5">
-            Datos en tiempo real de nuestra ciudad
+
+          <p className="text-base sm:text-lg md:text-xl text-emerald-50 font-medium max-w-xl mx-auto drop-shadow-lg" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6)' }}>
+            Monitoreo atmosférico de alta resolución en tiempo real para proteger tu salud y planificar tus actividades al aire libre.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-end justify-between gap-4 mt-4">
-          {/* ICA Card flotante */}
-          <div className="inline-flex flex-col bg-white/90 backdrop-blur-md rounded-xl px-5 py-3 shadow-lg border border-white/60 max-w-xs relative group overflow-hidden transition-transform hover:-translate-y-1">
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tangara opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-tangara"></span>
-              </span>
-              Índice de Calidad del Aire (ICA)
+        {/* ── Píldora ICA interactiva central ── */}
+        <div className="my-auto py-6 flex flex-col items-center gap-3">
+          <button
+            onClick={onExploreMap}
+            className="group inline-flex items-center gap-4 px-9 py-4 rounded-full shadow-2xl border border-white/80 hover:border-white transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            }}
+          >
+            {/* Ícono de Hoja */}
+            <div className="w-11 h-11 rounded-full bg-[#2D6A4F] group-hover:bg-[#1E4D38] transition-colors flex items-center justify-center shadow-md flex-shrink-0">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M2 6C5 4.8 8 4.8 11 6C14 7.2 17 7.2 21 6" stroke="#A7F3D0" strokeWidth="1.6" strokeLinecap="round" strokeOpacity="0.9" />
+                <path d="M1 10C4 8.8 7 8.8 10 10" stroke="#A7F3D0" strokeWidth="1.3" strokeLinecap="round" strokeOpacity="0.65" />
+                <path d="M11 20A7 7 0 0 0 18 13V7h-6a7 7 0 0 0-7 7 7 7 0 0 0 6 6Z" fill="#22C55E" stroke="white" strokeWidth="1.5" />
+                <path d="M11 20v-7" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
             </div>
-            <div className="flex items-baseline gap-3 mt-1">
-              <span className="text-5xl font-black text-gray-900">
-                {airQualityMetrics.icaGeneral}
+
+            <div className="flex items-baseline gap-2.5">
+              <span className="text-3xl sm:text-5xl font-black text-[#1A1A18] tracking-tight">
+                ICA {metrics.icaGeneral}
               </span>
-              <div>
-                <span className="text-base font-bold" style={{ color: icaInfo.color }}>
-                  {icaInfo.label}
-                </span>
-                <p className="text-xs text-gray-600 mt-0.5">{icaInfo.description}</p>
-              </div>
+              <span className="text-2xl text-[#9C9C92] font-light">·</span>
+              <span className="text-3xl sm:text-5xl font-black" style={{ color: icaInfo.color }}>
+                {icaInfo.label}
+              </span>
+            </div>
+
+            <span className="text-xs font-bold text-[#2D6A4F] ml-2 group-hover:translate-x-1 transition-transform">
+              Ver mapa →
+            </span>
+          </button>
+
+          <div
+            className="px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg"
+            style={{
+              background: 'rgba(255,255,255,0.92)',
+              color: icaInfo.color,
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            Calidad del aire {icaInfo.label.toLowerCase()} en Santiago de Cali
+          </div>
+        </div>
+
+        {/* ── Pie del Hero: Indicadores y botón de scroll ── */}
+        <div className="w-full flex flex-col items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-stone-800 font-bold bg-white/75 backdrop-blur-md px-6 py-2 rounded-full border border-white/60 shadow-md">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+              <span>Sensores IoT en tiempo real</span>
+            </div>
+            <div className="hidden sm:inline-block text-stone-400">·</div>
+            <div className="flex items-center gap-2">
+              <span className="text-[#2D6A4F] font-bold">22 Comunas</span>
+              <span>monitoreadas</span>
+            </div>
+            <div className="hidden sm:inline-block text-stone-400">·</div>
+            <div className="flex items-center gap-2">
+              <span className="text-[#D05A3F] font-bold">Ruta Saludable</span>
+              <span>calculada con IA</span>
             </div>
           </div>
 
-          {/* Botón Mapa en vivo */}
           <button
-            onClick={onExploreMap}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md transition-all hover:scale-105 active:scale-95 bg-palma"
+            onClick={scrollToDatos}
+            className="flex flex-col items-center text-[#2D6A4F] text-xs font-bold hover:text-[#1A1A18] transition-colors pt-2 group cursor-pointer"
           >
-            <Navigation size={14} />
-            Ver mapa en vivo
-            <ChevronRight size={14} />
+            <span className="text-[11px] uppercase tracking-widest text-stone-700 group-hover:text-[#1A1A18]">
+              Desliza para explorar
+            </span>
+            <ChevronDown size={18} className="animate-bounce mt-0.5 text-[#2D6A4F]" />
           </button>
         </div>
+
       </div>
     </div>
   );

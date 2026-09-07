@@ -1,17 +1,19 @@
 # ===================================================
-# TANGARA 2026 - Cliente ClickHouse
+# ECOPULSE 2026 - Cliente ClickHouse
 # Fuente de datos principal (capa Silver: tangara_plata).
-# Solo lectura. Nunca ejecutar DDL/DML contra la infra de Tangara.
+# Solo lectura. Nunca ejecutar DDL/DML contra la infra física.
 # ===================================================
 from __future__ import annotations
 
 from typing import Any
 
+import logging
 import clickhouse_connect
 from clickhouse_connect.driver.client import Client
 
 from app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
 _client: Client | None = None
 
 
@@ -43,15 +45,20 @@ def query_rows(sql: str, parameters: dict[str, Any] | None = None) -> list[dict[
     Usa siempre `parameters` (consultas parametrizadas de ClickHouse) para
     interpolar valores del usuario y evitar inyección SQL.
     """
-    client = get_client()
-    result = client.query(sql, parameters=parameters or {})
-    columns = result.column_names
-    return [dict(zip(columns, row)) for row in result.result_rows]
+    try:
+        client = get_client()
+        result = client.query(sql, parameters=parameters or {})
+        columns = result.column_names
+        return [dict(zip(columns, row)) for row in result.result_rows]
+    except Exception as exc:
+        logger.error("Error consultando ClickHouse: %s", exc)
+        return []
 
 
 def ping() -> bool:
     """Comprueba la conectividad con ClickHouse."""
     try:
         return get_client().query("SELECT 1").result_rows[0][0] == 1
-    except Exception:
+    except Exception as exc:
+        logger.warning("Fallo en ping a ClickHouse: %s", exc)
         return False

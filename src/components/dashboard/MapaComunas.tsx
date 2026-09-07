@@ -1,63 +1,48 @@
 // ===================================================
-// TANGARA 2026 - components/dashboard/MapaComunas.tsx
-// Mini-mapa interactivo de comunas — Light Mode Premium
-// El botón "Explorar Mapa" navega a la vista completa del mapa.
+// ECOPULSE 2026 - components/dashboard/MapaComunas.tsx
+// Widget de Mapa del Dashboard — Consume la fuente unificada useMapData.
 // ===================================================
-import { useState } from 'react';
 import { Leaf } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, WMSTileLayer, Marker, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
-import { comunasData } from '../../mock/airQualityData';
-import { ICA_LEVELS } from '../../utils/airQuality';
+import { useMapData } from '../../hooks/useMapData';
+import { getClusterMetrics } from '../../utils/airQuality';
+import type { TangaraNode } from '../../types';
 
-// --------------------------------------------------
-// Custom DivIcon para las comunas (diseño premium light)
-// --------------------------------------------------
-const createComunaIcon = (comuna: any, isHovered: boolean) => {
-  const color = comuna.color;
-  const size = isHovered ? 26 : 20;
-  const haloSize = isHovered ? 58 : 44;
+const iconCache = new Map<string, L.DivIcon>();
+
+const createClusterIcon = (cluster: { nodes: TangaraNode[] }) => {
+  const metrics = getClusterMetrics(cluster);
+  const cacheKey = `${cluster.nodes.map(n => n.id).sort().join(',')}:${metrics.displayValue}:${metrics.color}`;
+
+  if (iconCache.has(cacheKey)) {
+    return iconCache.get(cacheKey)!;
+  }
+
+  const color = metrics.color;
+  const fontSize = metrics.isCo2 ? '8px' : '10px';
 
   const html = `
-    <div style="position:relative; display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
-      <!-- Halo suave pulsante -->
-      <div class="neon-halo" style="
-        position:absolute;
-        width:${haloSize}px; height:${haloSize}px;
-        border-radius:50%;
-        background: radial-gradient(circle, ${color}25 0%, ${color}00 70%);
-        animation: comunaPulse 2.5s cubic-bezier(0.4,0,0.6,1) infinite;
-      "></div>
-
-      <!-- Badge principal -->
+    <div style="position:relative; width:32px; height:32px; display:flex; align-items:center; justify-content:center;">
       <div style="
-        position:absolute;
-        width:${size}px; height:${size}px;
-        border-radius:50%;
-        background: ${color};
-        border: 2px solid rgba(255,255,255,0.95);
+        position:absolute; inset:0; border-radius:50%;
+        background:${color}; opacity:${metrics.isCo2 ? 0.25 : 0.3}; transform:scale(1.3);
+      "></div>
+      <div style="
+        position:relative; width:24px; height:24px; border-radius:50%;
+        background:${color}; border:2px solid #ffffff;
+        box-shadow:0 2px 6px ${metrics.isCo2 ? 'rgba(37,99,235,0.4)' : 'rgba(0,0,0,0.3)'};
         display:flex; align-items:center; justify-content:center;
-        box-shadow: 0 0 10px ${color}55, 0 4px 12px rgba(0,0,0,0.12);
-        transition: all 0.2s ease-in-out;
+        color:#ffffff; font-size:${fontSize}; font-weight:900; font-family:Inter,sans-serif;
       ">
-        <span style="
-          color:white;
-          font-weight:900;
-          font-size:${isHovered ? '10px' : '8px'};
-          letter-spacing:-0.5px;
-          line-height:1;
-          font-family: Inter, system-ui, sans-serif;
-        ">${comuna.ica}</span>
+        ${metrics.displayValue}
       </div>
     </div>
   `;
 
-  return L.divIcon({
-    html,
-    className: 'bg-transparent border-none',
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-  });
+  const icon = L.divIcon({ html, className: 'custom-clean-marker', iconSize: [32, 32], iconAnchor: [16, 16] });
+  iconCache.set(cacheKey, icon);
+  return icon;
 };
 
 interface MapaComunasProps {
@@ -65,95 +50,92 @@ interface MapaComunasProps {
 }
 
 const MapaComunas = ({ onExploreMap }: MapaComunasProps) => {
-  const [hoveredComuna, setHoveredComuna] = useState<number | null>(null);
-
-  // Centro aproximado de Cali para el mini-mapa
-  const caliCenter: [number, number] = [3.4350, -76.5180];
+  const { clusters, wind, wmsLayers, center, isLoading } = useMapData();
 
   return (
-    <div className="card p-5">
-      {/* Keyframes para halos de los marcadores */}
-      <style>{`
-        @keyframes comunaPulse {
-          0%, 100% { transform: scale(0.88); opacity: 0.5; }
-          50%       { transform: scale(1.25); opacity: 0.15; }
-        }
-      `}</style>
-
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-bold text-gray-900">Calidad del aire por comunas</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Promedio ICA hoy</p>
-        </div>
+    <div className="w-full flex flex-col gap-3">
+      {/* Encabezado unificado de sección */}
+      <div className="h-6 flex items-center justify-between">
+        <h3 className="text-xs font-extrabold text-[#1A1A18] uppercase tracking-wider">
+          Monitor de Red Espacial
+        </h3>
         <button
           onClick={onExploreMap}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] bg-palma z-[400]"
+          className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-white bg-[#2D6A4F] hover:bg-[#1F4A37] transition-all shadow-sm"
         >
           <Leaf size={12} />
-          Explorar Mapa
+          Explorar mapa completo
         </button>
       </div>
 
-      <div className="flex gap-4">
-        {/* Mini-mapa Leaflet (Light Mode — CartoDB Positron) */}
-        <div className="relative flex-1 h-[280px] rounded-xl overflow-hidden border border-gray-200 shadow-[inset_0_1px_4px_rgba(0,0,0,0.04)]">
-          <MapContainer 
-            center={caliCenter} 
-            zoom={11} 
-            className="w-full h-full z-0 relative"
-            zoomControl={false}
-            scrollWheelZoom={false}
-            doubleClickZoom={false}
-            dragging={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://carto.com">CartoDB</a>'
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            />
-            {comunasData.map(comuna => {
-              const isHovered = hoveredComuna === comuna.id;
-              if (!comuna.coordinates) return null;
-              
-              return (
-                <Marker
-                  key={comuna.id}
-                  position={[comuna.coordinates.lat, comuna.coordinates.lng]}
-                  icon={createComunaIcon(comuna, isHovered)}
-                  eventHandlers={{
-                    mouseover: () => setHoveredComuna(comuna.id),
-                    mouseout: () => setHoveredComuna(null),
-                  }}
-                >
-                  <Tooltip 
-                    direction="top" 
-                    offset={[0, -10]} 
-                    opacity={0.97}
-                    className="!bg-white !text-gray-800 !border !border-gray-100 !rounded-xl !px-3 !py-2 !text-[11px] !font-bold !shadow-lg"
-                  >
-                    {comuna.name} · ICA {comuna.ica}
-                  </Tooltip>
-                </Marker>
-              );
-            })}
-          </MapContainer>
-        </div>
+      {/* Contenedor del Mapa */}
+      <div className="relative h-[360px] w-full rounded-2xl overflow-hidden border border-[#E8E8E4] shadow-sm">
+        <MapContainer
+          center={center}
+          zoom={12.5}
+          className="w-full h-full"
+          zoomControl={true}
+          style={{ background: '#EAE6DF' }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
 
-        {/* Leyenda ICA */}
-        <div className="flex flex-col justify-center gap-2.5 min-w-[130px] z-[400]">
-          <p className="text-[9px] font-black uppercase tracking-wider text-gray-400 mb-0.5">Leyenda ICA</p>
-          {ICA_LEVELS.slice(0, 4).map(lvl => (
-            <div key={lvl.level} className="flex items-center gap-2">
-              <span
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: lvl.color }}
-              />
-              <div className="text-[10px] text-gray-600 leading-tight">
-                <span className="font-bold block text-gray-700">{lvl.label}</span>
-                <span className="text-gray-400">({lvl.range[0]}–{lvl.range[1]})</span>
-              </div>
-            </div>
+          {/* Capas WMS de IDESC (Espacio público, ríos) */}
+          {wmsLayers.slice(0, 2).map((wms) => (
+            <WMSTileLayer
+              key={wms.id}
+              url={wms.url}
+              layers={wms.layers}
+              format={wms.format}
+              transparent={wms.transparent}
+              version={wms.version}
+              opacity={wms.opacity}
+            />
           ))}
-        </div>
+
+          {/* Vientos reales (Open-Meteo) */}
+          {wind.streams.map((stream, idx) => (
+            <Polyline
+              key={idx}
+              positions={stream}
+              pathOptions={{
+                color: '#2D6A4F',
+                weight: 2.5,
+                opacity: 0.5,
+                className: 'wind-flow-normal',
+              }}
+            />
+          ))}
+
+          {/* Nodos activos agrupados */}
+          {clusters.map((cluster, idx) => {
+            if (!cluster.coordinates) return null;
+            return (
+              <Marker
+                key={cluster.geohash || idx}
+                position={[cluster.coordinates.lat, cluster.coordinates.lng]}
+                icon={createClusterIcon(cluster)}
+              >
+                <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>
+                  <div className="text-xs font-bold p-1">
+                    {cluster.nodes.every((n: TangaraNode) => n.sensorType === 'co2' || (n.measurements.ica === 0 && (n.measurements.co2 ?? 0) > 0))
+                      ? `${cluster.nodes.length} Sensor CO₂ · ${Math.round(cluster.nodes.reduce((s: number, n: TangaraNode) => s + (n.measurements.co2 ?? 0), 0) / cluster.nodes.length)} ppm`
+                      : `${cluster.nodes.length} Sensor(es) · ICA: ${Math.round(cluster.nodes.filter((n: TangaraNode) => n.measurements.ica > 0).reduce((s: number, n: TangaraNode) => s + n.measurements.ica, 0) / Math.max(cluster.nodes.filter((n: TangaraNode) => n.measurements.ica > 0).length, 1))}`
+                    }
+                  </div>
+                </Tooltip>
+              </Marker>
+            );
+          })}
+        </MapContainer>
+
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm z-[500]">
+            <span className="text-xs font-bold text-[#2D6A4F]">Cargando red de monitoreo…</span>
+          </div>
+        )}
       </div>
     </div>
   );

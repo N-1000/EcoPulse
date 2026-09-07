@@ -1,11 +1,11 @@
 // ===================================================
-// TANGARA 2026 - pages/AirQualityPage.tsx
+// ECOPULSE 2026 - pages/AirQualityPage.tsx
 // Detalle de Calidad del Aire y Recomendaciones
 // ===================================================
 import { useState } from 'react';
 import { Shield, Info, Heart, HelpCircle, Activity } from 'lucide-react';
 import ContaminantesGrid from '../components/dashboard/ContaminantesGrid';
-import { ICA_LEVELS } from '../mock/airQualityData';
+import { ICA_LEVELS } from '../constants/ica';
 import { levelColor, levelLabel } from '../utils/airQuality';
 
 const ADVISORIES = {

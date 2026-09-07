@@ -7,50 +7,76 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Verde bosque oscuro — color de identidad EcoPulse
+        bosque: {
+          DEFAULT: '#2D6A4F',
+          light:   '#3D8B68',
+          dark:    '#1A3A2A',
+          night:   '#0F1F17',
+        },
+        // Terracota cálida — acento secundario
+        terra: {
+          DEFAULT: '#D05A3F',
+          light:   '#E07055',
+          dark:    '#B84D34',
+        },
+        // Hueso / fondo cálido
+        hueso: {
+          DEFAULT: '#FAFAF7',
+          mid:     '#F5F5F2',
+          dark:    '#EBEBEA',
+        },
+        // Verde menta para texto sobre fondo oscuro
+        menta: {
+          DEFAULT: '#A8C5B0',
+          dark:    '#6B9E7A',
+        },
+        // Compatibilidad con nombres anteriores (no romper código existente)
         palma: {
-          DEFAULT: '#1E5E4A',
-          light: '#2A7A62',
-          dark: '#164436',
+          DEFAULT: '#2D6A4F',
+          light:   '#3D8B68',
+          dark:    '#1A3A2A',
         },
         tangara: {
-          DEFAULT: '#0084B4',
-          light: '#009DD4',
-          dark: '#006A8F',
+          DEFAULT: '#2D6A4F',
+          light:   '#3D8B68',
+          dark:    '#1A3A2A',
         },
         citrico: {
-          DEFAULT: '#FFD100',
-          light: '#FFE066',
-          dark: '#E6BC00',
+          DEFAULT: '#D05A3F',
+          light:   '#E07055',
+          dark:    '#B84D34',
         },
         pastel: {
-          DEFAULT: '#CBE4F9',
-          dark: '#A8CDEF',
+          DEFAULT: '#E8F0E9',
+          dark:    '#C5D9C9',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans:    ['Inter', 'system-ui', 'sans-serif'],
+        display: ['"Playfair Display"', 'Georgia', 'serif'],
       },
       boxShadow: {
-        card: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)',
-        'card-hover': '0 4px 12px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.06)',
+        card: '0 1px 2px rgba(0,0,0,0.04)',
+        'card-hover': '0 3px 8px rgba(0,0,0,0.07)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.3s ease-out',
-        'slide-up': 'slideUp 0.3s ease-out',
+        'fade-in':   'fadeIn 0.25s ease-out',
+        'slide-up':  'slideUp 0.25s ease-out',
         'pulse-dot': 'pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'river-flow': 'dashFlow 30s linear infinite',
-        'wind-flow': 'dashFlow 15s linear infinite',
+        'wind-flow':  'dashFlow 15s linear infinite',
         'halo-pulse': 'haloPulse 3s ease-in-out infinite',
-        'bounce-in': 'bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+        'bounce-in':  'bounceIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
         'ring-pulse': 'ringPulse 2s infinite',
       },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: '0' },
+          '0%':   { opacity: '0' },
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '0%':   { opacity: '0', transform: 'translateY(6px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         pulseDot: {
@@ -61,19 +87,19 @@ export default {
           'to': { strokeDashoffset: '-1000' },
         },
         haloPulse: {
-          '0%': { transform: 'scale(0.85)', opacity: '0.6' },
-          '50%': { transform: 'scale(1.2)', opacity: '0.1' },
-          '100%': { transform: 'scale(0.85)', opacity: '0.6' },
+          '0%':   { transform: 'scale(0.85)', opacity: '0.5' },
+          '50%':  { transform: 'scale(1.2)',  opacity: '0.1' },
+          '100%': { transform: 'scale(0.85)', opacity: '0.5' },
         },
         bounceIn: {
-          '0%': { opacity: '0', transform: 'scale(0.9) translateY(10px)' },
+          '0%':   { opacity: '0', transform: 'scale(0.92) translateY(8px)' },
           '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
         },
         ringPulse: {
-          '0%': { boxShadow: '0 0 0 0 rgba(30, 94, 74, 0.5)' },
-          '70%': { boxShadow: '0 0 0 15px rgba(30, 94, 74, 0)' },
-          '100%': { boxShadow: '0 0 0 0 rgba(30, 94, 74, 0)' },
-        }
+          '0%':   { boxShadow: '0 0 0 0 rgba(45, 106, 79, 0.4)' },
+          '70%':  { boxShadow: '0 0 0 12px rgba(45, 106, 79, 0)' },
+          '100%': { boxShadow: '0 0 0 0 rgba(45, 106, 79, 0)' },
+        },
       },
     },
   },

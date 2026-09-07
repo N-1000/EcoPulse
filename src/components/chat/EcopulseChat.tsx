@@ -1,24 +1,40 @@
 // ===================================================
-// TANGARA 2026 - components/chat/TangaraChat.tsx
-// Ventana del chatbot "Tangara AI".
-// - Encabezado con el logo del proyecto y "Cali - Valle del Cauca".
+// ECOPULSE 2026 - components/chat/EcopulseChat.tsx
+// Ventana del asistente "EcoPulse AI" (EarthAvatar).
+// - Encabezado con avatar de pulso + nombre EcoPulse AI.
 // - Preguntas sugeridas al iniciar la conversación.
-// - Píldoras de planes rápidos ("borondos") y entrada de texto.
+// - Píldoras de planes rápidos y entrada de texto.
 //
 // INTEGRACIÓN FUTURA: las respuestas se generan localmente desde
 // `src/mock/chatData.ts`. Cuando exista el backend, se reemplaza la
 // lógica de `respondTo()` por una llamada a POST /api/chat.
 // ===================================================
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bird, Circle, MessageCircleQuestion, SendHorizontal, X } from 'lucide-react';
-import type { Message, SuggestedQuestion } from '../../types';
-import {
-  GENERIC_RESPONSES,
-  QUICK_OPTIONS,
-  SUGGESTED_QUESTIONS,
-  WELCOME_MESSAGE,
-  type QuickOption,
-} from '../../mock/chatData';
+import { Circle, MessageCircleQuestion, SendHorizontal, X } from 'lucide-react';
+import EarthAvatar from '../common/EarthAvatar';
+import type { Message, PageId, SuggestedQuestion, UIAction } from '../../types';
+
+export interface QuickOption {
+  label: string;
+  emoji: string;
+  query: string;
+  responses: string[];
+}
+
+const WELCOME_MESSAGE = 'Hola, soy EcoPulse AI. ¿En qué puedo ayudarte hoy?';
+const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
+  { id: 'sq1', text: '¿Cuál es el nodo con mayor contaminación ahora mismo?' },
+  { id: 'sq2', text: '¿Cuál será la calidad del aire mañana?' },
+  { id: 'sq3', text: '¿Qué ruta es más saludable para salir a correr?' },
+  { id: 'sq4', text: '¿Qué comunas tienen el aire más limpio en Cali?' },
+];
+
+const QUICK_OPTIONS: QuickOption[] = [
+  { label: 'Plan Pance', emoji: '🏞️', query: 'Plan Pance', responses: [] },
+  { label: 'Caminata Ecológica', emoji: '🥾', query: 'Caminata Ecológica', responses: [] },
+  { label: 'Ruta en Bici', emoji: '🚴', query: 'Ruta en Bici', responses: [] },
+  { label: 'Turístico / Borondo', emoji: '🗺️', query: 'Turístico / Borondo', responses: [] },
+];
 
 // --------------------------------------------------
 // Helpers
@@ -30,29 +46,17 @@ const getRandomItem = <T,>(arr: T[]): T =>
   arr[Math.floor(Math.random() * arr.length)];
 
 const formatTime = (date: Date): string =>
-  date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-
-/** Decide la respuesta simulada para un texto del usuario. */
-const respondTo = (text: string): string => {
-  const lower = text.toLowerCase();
-  const suggested = SUGGESTED_QUESTIONS.find(q => lower === q.text.toLowerCase());
-  if (suggested) return suggested.answer;
-  const matched = QUICK_OPTIONS.find(opt =>
-    lower.includes(opt.label.toLowerCase()) || lower.includes(opt.query.toLowerCase())
-  );
-  return matched ? getRandomItem(matched.responses) : getRandomItem(GENERIC_RESPONSES);
-};
+  date.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true });
 
 // --------------------------------------------------
 // Sub-componentes
 // --------------------------------------------------
+
 const TypingIndicator = ({ visible }: { visible: boolean }) => {
   if (!visible) return null;
   return (
     <div className="flex items-end gap-2 animate-fade-in">
-      <div className="w-7 h-7 rounded-full bg-palma flex items-center justify-center flex-shrink-0">
-        <Bird size={14} className="text-white" />
-      </div>
+      <EarthAvatar size={28} />
       <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
         <div className="flex gap-1.5 items-center h-4">
           <span className="typing-dot w-1.5 h-1.5 rounded-full bg-gray-400 block" />
@@ -65,14 +69,12 @@ const TypingIndicator = ({ visible }: { visible: boolean }) => {
 };
 
 const MessageBubble = ({ message }: { message: Message }) => {
-  const isAI = message.sender === 'tangara-ai';
+  const isAI = message.sender === 'ecopulse-ai';
 
   if (isAI) {
     return (
       <div className="flex items-end gap-2 animate-bounce-in">
-        <div className="w-7 h-7 rounded-full bg-palma flex items-center justify-center flex-shrink-0 shadow-sm">
-          <Bird size={14} className="text-white" />
-        </div>
+        <EarthAvatar size={28} />
         <div className="flex flex-col max-w-[85%]">
           <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 text-sm text-gray-700 leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
             {message.text}
@@ -104,17 +106,20 @@ const MessageBubble = ({ message }: { message: Message }) => {
 // --------------------------------------------------
 const INITIAL_MESSAGE: Message = {
   id: generateId(),
-  sender: 'tangara-ai',
+  sender: 'ecopulse-ai',
   text: WELCOME_MESSAGE,
   timestamp: new Date(),
 };
 
-interface TangaraChatProps {
+interface EcopulseChatProps {
   /** Cierra la ventana del chat (controlada por el Layout). */
   onClose: () => void;
+  currentPage?: string;                   // Le dice al agente en qué pantalla está el usuario
+  onAction?: (action: UIAction) => void;  // Permite que el agente ejecute acciones genéricas en la UI
+  onNavigate?: (page: PageId) => void;       // Permite cambiar la vista/página activa de la app
 }
 
-const TangaraChat = ({ onClose }: TangaraChatProps) => {
+const EcopulseChat = ({ onClose, currentPage = 'inicio', onAction, onNavigate }: EcopulseChatProps) => {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -127,7 +132,7 @@ const TangaraChat = ({ onClose }: TangaraChatProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const sendUserMessage = useCallback((text: string) => {
+  const sendUserMessage = useCallback(async (text: string) => {
     if (!text.trim() || isTyping) return;
 
     const userMsg: Message = {
@@ -141,19 +146,45 @@ const TangaraChat = ({ onClose }: TangaraChatProps) => {
     setInputText('');
     setIsTyping(true);
 
-    // Simula latencia de la IA (~700–1200ms).
-    const delay = 700 + Math.random() * 500;
-    setTimeout(() => {
+    try {
+      // Importación dinámica o directa de askChatbot desde services/api
+      const { askChatbot } = await import('../../services/api');
+      const res = await askChatbot(text.trim(), currentPage);
+
       const aiMsg: Message = {
         id: generateId(),
-        sender: 'tangara-ai',
-        text: respondTo(text),
+        sender: 'ecopulse-ai',
+        text: res.reply,
+        timestamp: new Date(),
+        aiActions: res.aiActions,
+      };
+
+      setMessages(prev => [...prev, aiMsg]);
+
+      // Si la IA envió acciones para la interfaz
+      if (res.aiActions && res.aiActions.length > 0) {
+        res.aiActions.forEach(action => {
+          if (action.type === 'navigate' && action.payload?.page && onNavigate) {
+            onNavigate(action.payload.page);
+          }
+          if (onAction) {
+            onAction(action);
+          }
+        });
+      }
+    } catch (err) {
+      console.error('[EcoPulse Chat] Error al conectar con el backend:', err);
+      const fallbackMsg: Message = {
+        id: generateId(),
+        sender: 'ecopulse-ai',
+        text: '¡Mirá ve! Tuve un inconveniente al consultar los datos en tiempo real. Intenta de nuevo en un momento, parcero. 🌿',
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages(prev => [...prev, fallbackMsg]);
+    } finally {
       setIsTyping(false);
-    }, delay);
-  }, [isTyping]);
+    }
+  }, [isTyping, currentPage, onNavigate, onAction]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -163,7 +194,7 @@ const TangaraChat = ({ onClose }: TangaraChatProps) => {
   };
 
   const handleQuickOption = (option: QuickOption) => {
-    sendUserMessage(`${option.emoji} ${option.label}`);
+    sendUserMessage(option.query);
   };
 
   const handleSuggested = (q: SuggestedQuestion) => {
@@ -175,17 +206,15 @@ const TangaraChat = ({ onClose }: TangaraChatProps) => {
       {/* ---- Header con el logo del proyecto ---- */}
       <div className="flex-shrink-0 px-4 py-3.5 border-b border-gray-100 bg-white">
         <div className="flex items-center justify-between gap-2">
-          {/* Logo: pájaro + Inteligencia Ambiental Urbana / Cali - Valle del Cauca */}
+          {/* Avatar EcoPulse + nombre */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm bg-tangara">
-              <Bird size={18} className="text-white" />
-            </div>
+            <EarthAvatar size={36} />
             <div className="min-w-0 leading-tight">
               <h2 className="text-[13px] font-black text-gray-900 truncate">
-                Inteligencia Ambiental Urbana
+                EcoPulse AI
               </h2>
-              <p className="text-[10px] text-tangara font-semibold tracking-wide truncate">
-                Cali - Valle del Cauca
+              <p className="text-[10px] text-[#2D6A4F] font-semibold tracking-wide truncate">
+                Asistente de Calidad del Aire · Cali
               </p>
             </div>
           </div>
@@ -204,7 +233,7 @@ const TangaraChat = ({ onClose }: TangaraChatProps) => {
           </div>
         </div>
         <p className="text-[11px] text-gray-400 mt-1.5">
-          Tangara AI · Tu guía inteligente para explorar Cali
+          Tu guía inteligente de la red ambiental EcoPulse en Cali
         </p>
       </div>
 
@@ -239,23 +268,25 @@ const TangaraChat = ({ onClose }: TangaraChatProps) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ---- Píldoras de planes rápidos ---- */}
-      <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-white">
-        <div className="grid grid-cols-2 gap-2">
-          {QUICK_OPTIONS.map(option => (
-            <button
-              key={option.label}
-              onClick={() => handleQuickOption(option)}
-              disabled={isTyping}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] bg-pastel text-tangara"
-              aria-label={`Preguntar sobre ${option.label}`}
-            >
-              <span>{option.emoji}</span>
-              <span className="truncate">{option.label}</span>
-            </button>
-          ))}
+      {/* ---- Píldoras de planes rápidos (solo si existen opciones) ---- */}
+      {QUICK_OPTIONS.length > 0 && (
+        <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-white">
+          <div className="grid grid-cols-2 gap-2">
+            {QUICK_OPTIONS.map(option => (
+              <button
+                key={option.label}
+                onClick={() => handleQuickOption(option)}
+                disabled={isTyping}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] bg-pastel text-tangara"
+                aria-label={`Preguntar sobre ${option.label}`}
+              >
+                <span>{option.emoji}</span>
+                <span className="truncate">{option.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ---- Input de texto ---- */}
       <div className="flex-shrink-0 px-4 pb-4 pt-2 bg-white">
@@ -284,4 +315,4 @@ const TangaraChat = ({ onClose }: TangaraChatProps) => {
   );
 };
 
-export default TangaraChat;
+export default EcopulseChat;

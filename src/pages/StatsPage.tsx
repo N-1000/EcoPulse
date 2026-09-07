@@ -1,5 +1,5 @@
 // ===================================================
-// TANGARA 2026 - pages/StatsPage.tsx
+// ECOPULSE 2026 - pages/StatsPage.tsx
 // Estadísticas del Sistema y Reporte de Validación de Sensores
 // ===================================================
 import { BarChart3, AlertTriangle, ShieldCheck, Activity, Users, Radio, Info } from 'lucide-react';

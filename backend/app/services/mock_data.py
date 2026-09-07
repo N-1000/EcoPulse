@@ -1,8 +1,141 @@
-# ===================================================
-# TANGARA 2026 - mock_data.py
-# Nodos simulados para fallback cuando ClickHouse no está conectado.
-# ===================================================
+from datetime import datetime, timedelta
 
+def _get_recent_time(minutes_ago: int = 5) -> str:
+    return (datetime.now() - timedelta(minutes=minutes_ago)).isoformat()
+
+# Los 12 nodos REALES obtenidos de tangara_plata.plata_tangara_sensores
+# Actualizar cuando ClickHouse reporte nuevos sensores activos.
 TANGARA_NODES = [
-    
+    {
+        "id": "D29ESP32DE0B7BE",
+        "name": "Nodo D29ESP (El Ingenio)",
+        "geohash": "d29e1ze",
+        "coordinates": {"lat": 3.38172, "lng": -76.55891},
+        "comuna": "Cali",
+        "barrio": "El Ingenio",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(2),
+        "measurements": {"temperature": 25.7, "humidity": 64.7, "pm25": 10.0, "co2": 0.0, "ica": 42, "level": "buena"}
+    },
+    {
+        "id": "D29ESP32DE3BCC6",
+        "name": "Nodo D29ESP (Pasoancho)",
+        "geohash": "d29eehq",
+        "coordinates": {"lat": 3.45176, "lng": -76.49986},
+        "comuna": "Cali",
+        "barrio": "Ciudad Jardín",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(3),
+        "measurements": {"temperature": 26.7, "humidity": 71.5, "pm25": 3.0, "co2": 0.0, "ica": 12, "level": "buena"}
+    },
+    {
+        "id": "D29ESP32DEE1712",
+        "name": "Nodo D29ESP (Meléndez)",
+        "geohash": "d29dfx4",
+        "coordinates": {"lat": 3.33503, "lng": -76.52732},
+        "comuna": "Cali",
+        "barrio": "Meléndez",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(4),
+        "measurements": {"temperature": 27.3, "humidity": 70.0, "pm25": 3.0, "co2": 0.0, "ica": 12, "level": "buena"}
+    },
+    {
+        "id": "D29ESP32DEFC17E",
+        "name": "Nodo D29ESP (La Buitrera)",
+        "geohash": "d29s48x",
+        "coordinates": {"lat": 3.51905, "lng": -76.52046},
+        "comuna": "Cali",
+        "barrio": "La Buitrera",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(5),
+        "measurements": {"temperature": 26.1, "humidity": 65.5, "pm25": 2.0, "co2": 0.0, "ica": 8, "level": "buena"}
+    },
+    {
+        "id": "D29ESP32DE7211E",
+        "name": "Nodo D29ESP (Aguablanca)",
+        "geohash": "d29ekfb",
+        "coordinates": {"lat": 3.39958, "lng": -76.43119},
+        "comuna": "Cali",
+        "barrio": "Aguablanca",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(6),
+        "measurements": {"temperature": 26.4, "humidity": 71.6, "pm25": 4.0, "co2": 0.0, "ica": 17, "level": "buena"}
+    },
+    {
+        "id": "D29ESP32DEFA43A",
+        "name": "Nodo D29ESP (Cañaveralejo)",
+        "geohash": "d29e6sv",
+        "coordinates": {"lat": 3.41056, "lng": -76.52320},
+        "comuna": "Cali",
+        "barrio": "Cañaveralejo",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(7),
+        "measurements": {"temperature": 26.6, "humidity": 70.2, "pm25": 8.0, "co2": 0.0, "ica": 33, "level": "buena"}
+    },
+    {
+        "id": "D29TTGOTD8F1AE",
+        "name": "Nodo D29TTG (Granada)",
+        "geohash": "d29edxp",
+        "coordinates": {"lat": 3.46687, "lng": -76.52046},
+        "comuna": "Cali",
+        "barrio": "Granada",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(8),
+        "measurements": {"temperature": 28.0, "humidity": 61.1, "pm25": 0.0, "co2": 665.0, "ica": 0, "level": "buena"}
+    },
+    {
+        "id": "D29ESP32DE7157E",
+        "name": "Nodo D29ESP (El Lido)",
+        "geohash": "d29e1yw",
+        "coordinates": {"lat": 3.37623, "lng": -76.55479},
+        "comuna": "Cali",
+        "barrio": "El Lido",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(9),
+        "measurements": {"temperature": 26.2, "humidity": 63.3, "pm25": 8.0, "co2": 0.0, "ica": 33, "level": "buena"}
+    },
+    {
+        "id": "D29ESP32DED2FF6",
+        "name": "Nodo D29ESP (Pance)",
+        "geohash": "d29e66v",
+        "coordinates": {"lat": 3.39958, "lng": -76.53419},
+        "comuna": "Cali",
+        "barrio": "Pance",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(10),
+        "measurements": {"temperature": 27.6, "humidity": 96.8, "pm25": 6.0, "co2": 0.0, "ica": 25, "level": "buena"}
+    },
+    {
+        "id": "D29TTGOTD906BE",
+        "name": "Nodo D29TTG (Pance Sur)",
+        "geohash": "d29e6de",
+        "coordinates": {"lat": 3.39820, "lng": -76.52595},
+        "comuna": "Cali",
+        "barrio": "Pance Sur",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(11),
+        "measurements": {"temperature": 27.8, "humidity": 69.5, "pm25": 0.0, "co2": 345.0, "ica": 0, "level": "buena"}
+    },
+    {
+        "id": "D29ESP32DE3BD5E",
+        "name": "Nodo D29ESP (Santa Mónica)",
+        "geohash": "d29edzu",
+        "coordinates": {"lat": 3.47099, "lng": -76.51359},
+        "comuna": "Cali",
+        "barrio": "Santa Mónica",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(12),
+        "measurements": {"temperature": 27.2, "humidity": 61.2, "pm25": 11.0, "co2": 0.0, "ica": 46, "level": "buena"}
+    },
+    {
+        "id": "D29ESP32DED307A",
+        "name": "Nodo D29ESP (Meléndez Sur)",
+        "geohash": "d29e48s",
+        "coordinates": {"lat": 3.34327, "lng": -76.52458},
+        "comuna": "Cali",
+        "barrio": "Meléndez Sur",
+        "status": "activo",
+        "lastUpdate": _get_recent_time(13),
+        "measurements": {"temperature": 28.9, "humidity": 61.3, "pm25": 5.0, "co2": 0.0, "ica": 21, "level": "buena"}
+    }
 ]

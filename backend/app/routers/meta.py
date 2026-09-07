@@ -1,5 +1,5 @@
 # ===================================================
-# TANGARA 2026 - Router de metadatos / introspección
+# ECOPULSE 2026 - Router de metadatos / introspección
 # Descubre el esquema real de la capa Silver (tangara_plata)
 # sin necesidad de conocerlo de antemano.
 # ===================================================

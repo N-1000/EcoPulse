@@ -1,5 +1,5 @@
 // ===================================================
-// TANGARA 2026 - pages/ReportsPage.tsx
+// ECOPULSE 2026 - pages/ReportsPage.tsx
 // Generador de Reportes Ambientales
 // ===================================================
 import { useState } from 'react';
@@ -19,10 +19,11 @@ const ReportsPage = () => {
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
     setIsGenerating(true);
+    // Procesa la solicitud e informa al usuario
     setTimeout(() => {
       setIsGenerating(false);
-      alert('Reporte generado exitosamente. Haz clic en "Descargar" en el listado inferior.');
-    }, 2000);
+      alert('Reporte generado exitosamente. Revisa el listado de descargas.');
+    }, 300);
   };
 
   return (

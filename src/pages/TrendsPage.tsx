@@ -1,5 +1,5 @@
 // ===================================================
-// TANGARA 2026 - pages/TrendsPage.tsx
+// ECOPULSE 2026 - pages/TrendsPage.tsx
 // Historial y Tendencias Temporales
 // ===================================================
 import { useState } from 'react';

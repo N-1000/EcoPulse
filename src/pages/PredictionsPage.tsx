@@ -1,229 +1,383 @@
 // ===================================================
-// TANGARA 2026 - pages/PredictionsPage.tsx
-// Predicciones de Calidad del Aire (Modelo Inteligencia Artificial)
+// ECOPULSE 2026 - pages/PredictionsPage.tsx
+// Proyección Horaria de Calidad del Aire por nodo
+// Curva paramétrica calibrada con histórico ClickHouse (65.4M datos).
+// Transparencia: curva estimada, no modelo ML en producción.
 // ===================================================
 import { useState } from 'react';
-import { Sparkles, Brain, ShieldCheck, Thermometer, Droplets, Wind } from 'lucide-react';
+import { Sparkles, Brain, ShieldCheck, Thermometer, Droplets, Wind, Info, FlaskConical } from 'lucide-react';
 import { levelColor } from '../utils/airQuality';
+import { useAirQuality } from '../hooks/useAirQuality';
 
+// Nodos reales de la red Tángara con valores calibrados con ClickHouse
 const NODES_PRED = [
-  { id: 'S.Antonio', name: 'Nodo San Antonio', baseline: 12, peak: 24, hourPeak: '18:00', cleanTime: '04:00', desc: 'Influencia de corrientes del oeste (brisa de Pance/Farallones) amortigua el pico nocturno.' },
-  { id: 'Versalles', name: 'Nodo Versalles', baseline: 18, peak: 38, hourPeak: '08:30', cleanTime: '01:00', desc: 'Pico pronunciado temprano en la mañana por tráfico pesado en la Av. de las Américas.' },
-  { id: 'Ingenio', name: 'Nodo El Ingenio', baseline: 10, peak: 21, hourPeak: '07:30', cleanTime: '23:00', desc: 'Zona amortiguada por gran cobertura verde. Calidad excelente la mayor parte del día.' },
-  { id: 'Pance', name: 'Nodo Pance', baseline: 5, peak: 11, hourPeak: '12:00', cleanTime: '02:00', desc: 'El nodo más limpio de la red. Prácticamente sin picos de polución nocivos.' },
+  {
+    id: 'S.Antonio',
+    name: 'San Antonio',
+    area: 'Centro Histórico / Ladera Oeste',
+    baseline: 5.0, // PM2.5 µg/m³ base calibrado ClickHouse 2026
+    peak: 9.7,     // pico matutino real ClickHouse (8-9 AM)
+    hourPeak: '8:00 AM',
+    cleanTime: '4:00 AM',
+    desc: 'La brisa del oeste proveniente de Pance y los Farallones amortigua la acumulación nocturna. Registra el pico más suave de la red por su posición elevada y cobertura vegetal.',
+    factor: 0.88,  // relativo al promedio de ciudad (< 1 = más limpio)
+  },
+  {
+    id: 'Versalles',
+    name: 'Versalles',
+    area: 'Corredor Av. Américas',
+    baseline: 6.6,
+    peak: 12.5,
+    hourPeak: '8:30 AM',
+    cleanTime: '1:00 AM',
+    desc: 'Pico pronunciado en la mañana por tráfico pesado en la Av. de las Américas y buses del MÍO. La inversión térmica matutina atrapa las emisiones vehiculares.',
+    factor: 1.12,
+  },
+  {
+    id: 'Ingenio',
+    name: 'El Ingenio',
+    area: 'Sur / Zona Verde',
+    baseline: 4.8,
+    peak: 8.4,
+    hourPeak: '9:00 AM',
+    cleanTime: '11:00 PM',
+    desc: 'Zona amortiguada por gran cobertura verde del parque Metropolitano Buitrera. Calidad excelente la mayor parte del día gracias a los espacios abiertos.',
+    factor: 0.82,
+  },
+  {
+    id: 'Pance',
+    name: 'Pance',
+    area: 'Corredor ambiental sur',
+    baseline: 3.8,
+    peak: 6.3,
+    hourPeak: '10:00 AM',
+    cleanTime: '2:00 AM',
+    desc: 'El nodo más limpio de la red. El corredor natural del río Pance y la reserva forestal de los Farallones mantienen un PM₂.₅ excepcionalmente bajo durante casi todo el día.',
+    factor: 0.65,
+  },
 ];
+
+// ICA a partir de PM2.5 (fórmula EPA / Resolución 2254 MinAmbiente)
+function pm25ToIca(pm25: number): number {
+  const bp: [number, number, number, number][] = [
+    [0, 12.0, 0, 50],
+    [12.1, 35.4, 51, 100],
+    [35.5, 55.4, 101, 150],
+    [55.5, 150.4, 151, 200],
+  ];
+  for (const [cl, ch, il, ih] of bp) {
+    if (pm25 <= ch) return Math.round(((ih - il) / (ch - cl)) * (pm25 - cl) + il);
+  }
+  return 50;
+}
+
+function getLevel(ica: number): { label: string; color: string } {
+  if (ica <= 50)  return { label: 'Buena',            color: '#16A34A' };
+  if (ica <= 100) return { label: 'Moderada',          color: '#CA8A04' };
+  if (ica <= 150) return { label: 'D. Sensibles',      color: '#EA580C' };
+  return              { label: 'Dañina',              color: '#DC2626' };
+}
 
 const PredictionsPage = () => {
   const [selectedNode, setSelectedNode] = useState(NODES_PRED[0]);
+  const { metrics } = useAirQuality();
 
-  // Generar curva de 24 horas simulada para el gráfico SVG
+  // Curva paramétrica gaussiana calibrada con el ciclo diario real de ClickHouse
   const generateChartPoints = () => {
-    const points = [];
-    const base = selectedNode.baseline;
-    const peak = selectedNode.peak;
-    const peakHour = parseInt(selectedNode.hourPeak.split(':')[0]);
+    const points: { hour: number; pm25: number; ica: number }[] = [];
+    const base    = selectedNode.baseline;
+    const peak    = selectedNode.peak;
+    const rawH    = parseInt(selectedNode.hourPeak.split(':')[0]);
+    const isPm    = selectedNode.hourPeak.includes('PM');
+    const peakH   = isPm && rawH !== 12 ? rawH + 12 : (rawH === 12 && !isPm ? 0 : rawH);
 
     for (let h = 0; h <= 24; h++) {
-      // Simular curva con pico en hora pico y valle en madrugada
-      const distanceToPeak = Math.abs(h - peakHour);
-      const val = base + (peak - base) * Math.exp(-Math.pow(distanceToPeak / 3, 2)) + Math.sin(h / 3) * 1.5;
-      points.push({ hour: h, val: Math.max(2, val) });
+      // Curva gaussiana sobre el histórico real de Cali (pico mañana + pico tarde pequeño)
+      const morningDist  = Math.abs(h - peakH);
+      const eveningDist  = Math.abs(h - 18); // pico secundario tarde (5-8 PM)
+      const morningGauss = (peak - base) * Math.exp(-Math.pow(morningDist / 2.5, 2));
+      const eveningGauss = (peak - base) * 0.55 * Math.exp(-Math.pow(eveningDist / 2.0, 2));
+      const pm25 = Math.max(1.5, base + morningGauss + eveningGauss);
+      points.push({ hour: h, pm25, ica: pm25ToIca(pm25) });
     }
     return points;
   };
 
-  const points = generateChartPoints();
-  const maxVal = Math.max(...points.map(p => p.val), 40);
+  const points  = generateChartPoints();
+  const maxPm25 = Math.max(...points.map(p => p.pm25), 15);
+  const peakPm25 = Math.max(...points.map(p => p.pm25));
+  const peakIca  = pm25ToIca(peakPm25);
+  const peakLevel = getLevel(peakIca);
+  const currentPm25 = metrics.contaminants.find(c => c.id === 'pm25')?.value ?? selectedNode.baseline;
+  const currentIca  = pm25ToIca(currentPm25 * selectedNode.factor);
+  const currentLevel = getLevel(currentIca);
 
-  // Generar el path del SVG
-  const svgWidth = 600;
-  const svgHeight = 200;
-  const padding = 20;
+  const svgW = 620;
+  const svgH = 200;
+  const padX = 32;
+  const padY = 18;
+  const chartW = svgW - padX - 12;
+  const chartH = svgH - padY * 2.4;
 
-  const getSvgCoordinates = () => {
-    return points.map(p => {
-      const x = padding + (p.hour / 24) * (svgWidth - padding * 2);
-      const y = svgHeight - padding - (p.val / maxVal) * (svgHeight - padding * 2);
-      return `${x},${y}`;
-    }).join(' ');
-  };
+  const toX  = (h: number)   => padX + (h / 24) * chartW;
+  const toY  = (v: number)   => padY + chartH - (v / maxPm25) * chartH;
 
-  // Nivel de la predicción máxima
-  const getLevel = (val: number) => {
-    if (val <= 12) return 'buena';
-    if (val <= 35.4) return 'moderada';
-    return 'dañina-grupos-sensibles';
-  };
+  // Path smooth
+  const coords = points.map(p => ({ x: toX(p.hour), y: toY(p.pm25) }));
+  let path = `M ${coords[0].x} ${coords[0].y}`;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const dx = (coords[i + 1].x - coords[i].x) * 0.4;
+    path += ` C ${coords[i].x + dx} ${coords[i].y}, ${coords[i + 1].x - dx} ${coords[i + 1].y}, ${coords[i + 1].x} ${coords[i + 1].y}`;
+  }
+  const areaPath = `${path} L ${toX(24)} ${padY + chartH} L ${toX(0)} ${padY + chartH} Z`;
 
   return (
-    <div className="p-5 pt-4 space-y-4 max-w-7xl mx-auto">
-      {/* Encabezado */}
-      <div className="card p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-            <Brain className="text-tangara" />
-            Predicciones Inteligentes (IA)
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Visualiza las proyecciones a 24 horas estimadas por el modelo espacio-temporal XGBoost de Tángara.
-          </p>
-        </div>
+    <div className="p-5 pt-4 space-y-5 max-w-7xl mx-auto bg-[#F2E8D5] min-h-screen">
 
-        {/* Selector de nodo */}
-        <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-sm">
-          <select
-            value={selectedNode.id}
-            onChange={e => setSelectedNode(NODES_PRED.find(n => n.id === e.target.value) || NODES_PRED[0])}
-            className="text-xs font-semibold text-gray-700 bg-transparent border-none outline-none cursor-pointer"
-          >
-            {NODES_PRED.map(n => (
-              <option key={n.id} value={n.id}>{n.name}</option>
-            ))}
-          </select>
+      {/* ── Encabezado ── */}
+      <div className="bg-white rounded-3xl p-6 border border-[#DDD5C4] shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <div className="w-8 h-8 rounded-xl bg-[#2D6A4F]/10 text-[#2D6A4F] flex items-center justify-center">
+                <Brain size={16} />
+              </div>
+              <h2 className="text-base font-extrabold text-[#1A1A18] tracking-tight">
+                Proyección Horaria por Nodo
+              </h2>
+            </div>
+            <p className="text-xs text-[#6B6B67] leading-relaxed max-w-xl">
+              Curva estimada de PM₂.₅ e ICA a lo largo del día, calibrada con el ciclo diurno real de los <strong>65.4 M+</strong> registros históricos de la Red Tángara en Cali (ClickHouse).
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Badge de transparencia */}
+            <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold px-3 py-1.5 rounded-full">
+              <Info size={11} />
+              Proyección estimada · No es un modelo ML en producción
+            </div>
+
+            {/* Selector de nodo */}
+            <div className="flex items-center bg-[#F2E8D5] px-3 py-1.5 rounded-xl border border-[#DDD5C4]/80">
+              <select
+                value={selectedNode.id}
+                onChange={e => setSelectedNode(NODES_PRED.find(n => n.id === e.target.value) || NODES_PRED[0])}
+                className="text-xs font-bold text-[#1A1A18] bg-transparent border-none outline-none cursor-pointer"
+              >
+                {NODES_PRED.map(n => (
+                  <option key={n.id} value={n.id}>{n.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Gráfico de Predicción a 24 horas */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="card p-5 lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Pronóstico de PM2.5 para las próximas 24 horas</h3>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-              Modelo XGBoost v1.2
-            </span>
+      {/* ── Gráfico + Insights ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Gráfico PM2.5 */}
+        <div className="bg-white rounded-3xl p-6 border border-[#DDD5C4] shadow-sm lg:col-span-2 space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-extrabold text-[#1A1A18] tracking-tight">{selectedNode.name}</h3>
+              <p className="text-[11px] text-[#6B6B67]">{selectedNode.area}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-[#8C8C86] uppercase block">Ahora (~estimado)</span>
+                <span className="text-sm font-black" style={{ color: currentLevel.color }}>
+                  ICA ~{currentIca} · {currentLevel.label}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-[#8C8C86] uppercase block">Pico esperado</span>
+                <span className="text-sm font-black" style={{ color: peakLevel.color }}>
+                  ICA ~{peakIca} · {peakLevel.label}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Gráfico SVG */}
-          <div className="relative w-full overflow-hidden bg-gray-50/50 rounded-2xl border border-gray-100 p-2">
-            <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-auto">
-              {/* Líneas de cuadrícula e indicador de zonas de calidad */}
-              <line x1={padding} y1={svgHeight - padding} x2={svgWidth - padding} y2={svgHeight - padding} stroke="#E5E7EB" strokeWidth="1" />
-              <line x1={padding} y1={padding} x2={padding} y2={svgHeight - padding} stroke="#E5E7EB" strokeWidth="1" />
-
-              {/* Guía de niveles de calidad (Bueno / Moderado) */}
-              <rect x={padding} y={svgHeight - padding - (12 / maxVal) * (svgHeight - padding * 2)} width={svgWidth - padding * 2} height={(12 / maxVal) * (svgHeight - padding * 2)} fill="#16A34A" fillOpacity="0.03" />
-              <rect x={padding} y={padding} width={svgWidth - padding * 2} height={svgHeight - padding - (12 / maxVal) * (svgHeight - padding * 2)} fill="#CA8A04" fillOpacity="0.02" />
-
-              {/* Path del gráfico */}
-              <polyline
-                fill="none"
-                stroke="url(#gradient-pm25)"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points={getSvgCoordinates()}
-              />
-
-              {/* Definición del degradado del trazo */}
+          {/* SVG curva de predicción */}
+          <div className="relative w-full overflow-hidden bg-[#FAF7F2] rounded-2xl border border-[#EBE4D8] p-2">
+            <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto overflow-visible">
               <defs>
-                <linearGradient id="gradient-pm25" x1="0" y1="1" x2="0" y2="0">
-                  <stop offset="0%" stopColor="#16A34A" />
-                  <stop offset="50%" stopColor="#CA8A04" />
-                  <stop offset="100%" stopColor="#EA580C" />
+                <linearGradient id="pred-area-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"   stopColor="#2D6A4F" stopOpacity="0.35" />
+                  <stop offset="70%"  stopColor="#2D6A4F" stopOpacity="0.08" />
+                  <stop offset="100%" stopColor="#2D6A4F" stopOpacity="0.0" />
                 </linearGradient>
+                <filter id="pred-glow">
+                  <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#2D6A4F" floodOpacity="0.25" />
+                </filter>
               </defs>
 
-              {/* Puntos destacados */}
-              {points.map((p, idx) => {
-                if (p.hour === 0 || p.hour === 12 || p.hour === 24 || p.hour === parseInt(selectedNode.hourPeak.split(':')[0])) {
-                  const x = padding + (p.hour / 24) * (svgWidth - padding * 2);
-                  const y = svgHeight - padding - (p.val / maxVal) * (svgHeight - padding * 2);
-                  return (
-                    <g key={idx}>
-                      <circle cx={x} cy={y} r="4" fill={levelColor(getLevel(p.val))} />
-                      <text x={x} y={y - 8} fontSize="8" fontWeight="bold" textAnchor="middle" fill="#374151">
-                        {p.val.toFixed(1)}
-                      </text>
-                    </g>
-                  );
-                }
-                return null;
+              {/* Guías horizontales */}
+              {[maxPm25, maxPm25 * 0.66, maxPm25 * 0.33, 0].map((v, vi) => {
+                const y = toY(v);
+                return (
+                  <g key={vi}>
+                    <line x1={padX} y1={y} x2={svgW - 10} y2={y} stroke="#EBE4D8" strokeDasharray="4 4" strokeWidth="1" />
+                    <text x={padX - 6} y={y + 3.5} textAnchor="end" fontSize="9" fill="#8C8C86" fontWeight="700">
+                      {v.toFixed(0)}
+                    </text>
+                  </g>
+                );
               })}
 
-              {/* Eje X Etiquetas de horas */}
-              {Array.from({ length: 7 }).map((_, idx) => {
-                const hour = idx * 4;
-                const x = padding + (hour / 24) * (svgWidth - padding * 2);
+              {/* Línea guía OMS PM2.5 = 15 µg/m³ */}
+              {maxPm25 >= 15 && (
+                <>
+                  <line x1={padX} y1={toY(15)} x2={svgW - 10} y2={toY(15)} stroke="#D97706" strokeDasharray="5 3" strokeWidth="1.5" opacity="0.7" />
+                  <text x={svgW - 12} y={toY(15) - 4} textAnchor="end" fontSize="8.5" fill="#D97706" fontWeight="800">Guía OMS</text>
+                </>
+              )}
+
+              {/* Área rellena */}
+              <path d={areaPath} fill="url(#pred-area-grad)" />
+
+              {/* Trazo principal */}
+              <path d={path} fill="none" stroke="#2D6A4F" strokeWidth="3" strokeLinecap="round" filter="url(#pred-glow)" />
+
+              {/* Puntos clave */}
+              {points.map((p, idx) => {
+                const show = p.hour % 6 === 0 || p.pm25 === peakPm25;
+                if (!show) return null;
+                const x = toX(p.hour);
+                const y = toY(p.pm25);
+                const lv = getLevel(p.ica);
                 return (
-                  <text key={idx} x={x} y={svgHeight - 4} fontSize="8" fill="#9CA3AF" textAnchor="middle">
-                    {hour === 24 ? '00:00' : `${String(hour).padStart(2, '0')}:00`}
+                  <g key={idx}>
+                    <circle cx={x} cy={y} r="4.5" fill={lv.color} />
+                    <circle cx={x} cy={y} r="2" fill="#FFFFFF" />
+                    <text x={x} y={y - 9} fontSize="8" fontWeight="900" textAnchor="middle" fill={lv.color}>
+                      {p.pm25.toFixed(1)}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Eje X horas */}
+              {Array.from({ length: 7 }).map((_, idx) => {
+                const h = idx * 4;
+                const x = toX(h);
+                const h12 = h === 0 || h === 24 ? 12 : h > 12 ? h - 12 : h;
+                const ampm = h >= 12 && h < 24 ? 'PM' : 'AM';
+                return (
+                  <text key={idx} x={x} y={svgH - 3} fontSize="9" fill="#8C8C86" textAnchor="middle" fontWeight="700">
+                    {`${h12} ${ampm}`}
                   </text>
                 );
               })}
             </svg>
           </div>
+
+          {/* Leyenda inferior */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#F2E8D5]">
+            <div className="flex items-center gap-4 text-[10px] font-bold text-[#6B6B67]">
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-1 bg-[#2D6A4F] rounded-full inline-block" />
+                PM₂.₅ proyectado (µg/m³)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-0 border-t-2 border-dashed border-[#D97706] inline-block" />
+                Guía OMS (15 µg/m³)
+              </span>
+            </div>
+            <span className="text-[10px] text-[#8C8C86]">Curva gaussiana calibrada · ClickHouse 65.4M registros</span>
+          </div>
         </div>
 
-        {/* IA Insights */}
-        <div className="card p-5 space-y-4 flex flex-col justify-between">
-          <div className="space-y-3">
-            <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-1.5">
-              <Sparkles size={14} className="text-tangara" />
-              IA Insights & Recomendación
+        {/* Panel de insights */}
+        <div className="bg-white rounded-3xl p-6 border border-[#DDD5C4] shadow-sm flex flex-col gap-4">
+          <div>
+            <h4 className="text-xs font-extrabold text-[#1A1A18] uppercase tracking-widest flex items-center gap-1.5 mb-3">
+              <Sparkles size={13} className="text-[#2D6A4F]" />
+              Diagnóstico del Nodo
             </h4>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              {selectedNode.desc}
-            </p>
-            <div className="border-t border-gray-100 pt-3 space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-400">Pico máximo esperado:</span>
-                <span className="font-bold text-gray-800">{selectedNode.peak} µg/m³ ({selectedNode.hourPeak})</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-400">Hora más limpia:</span>
-                <span className="font-bold text-emerald-600">{selectedNode.cleanTime} AM</span>
-              </div>
+            <p className="text-xs text-[#6B6B67] leading-relaxed">{selectedNode.desc}</p>
+          </div>
+
+          <div className="space-y-2 border-t border-[#F2E8D5] pt-3">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-[#8C8C86]">PM₂.₅ base histórico:</span>
+              <span className="font-bold text-[#1A1A18]">{selectedNode.baseline} µg/m³</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-[#8C8C86]">Pico esperado:</span>
+              <span className="font-bold" style={{ color: peakLevel.color }}>{selectedNode.peak.toFixed(1)} µg/m³ ({selectedNode.hourPeak})</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-[#8C8C86]">Hora más limpia:</span>
+              <span className="font-bold text-[#2D6A4F]">{selectedNode.cleanTime}</span>
             </div>
           </div>
 
-          <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 text-xs text-sky-800 space-y-1">
-            <span className="font-bold flex items-center gap-1">
-              <ShieldCheck size={14} />
-              Recomendación AI
+          <div className="bg-[#E8F5EE] border border-[#2D6A4F]/20 rounded-2xl p-3.5 text-xs text-[#1A3A2A] space-y-1">
+            <span className="font-extrabold flex items-center gap-1.5">
+              <ShieldCheck size={13} className="text-[#2D6A4F]" />
+              Mejor ventana para actividad física
             </span>
-            <p className="text-[11px] leading-relaxed">
-              Mañana la mejor ventana para hacer deporte al aire libre en esta zona será a las <strong>{selectedNode.cleanTime}</strong>. Evita la franja de las <strong>{selectedNode.hourPeak}</strong>.
+            <p className="text-[11px] leading-relaxed text-[#2D6A4F]">
+              La hora más limpia en este nodo es <strong>{selectedNode.cleanTime}</strong>. Evita la franja de las <strong>{selectedNode.hourPeak}</strong> si tienes afecciones respiratorias.
+            </p>
+          </div>
+
+          {/* Badge de transparencia */}
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-[10px] text-amber-800 flex items-start gap-2">
+            <Info size={12} className="mt-0.5 flex-shrink-0 text-amber-600" />
+            <p className="leading-relaxed">
+              <strong>Proyección estimada.</strong> Esta curva es un modelo paramétrico calibrado con el histórico real de Cali — no un modelo de machine learning en producción. Los valores pueden diferir del sensor en tiempo real.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Tarjeta de Metodología de la IA (Para el premio de Investigación) */}
-      <div className="card p-5">
-        <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1.5">
-          <Brain size={16} className="text-tangara" />
-          Rigor Científico del Modelo IA
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="space-y-1.5">
-            <span className="font-bold text-gray-800 flex items-center gap-1">
-              <Wind size={14} className="text-tangara" />
-              Variables Espacio-Temporales
+      {/* ── Hoja de Ruta del Modelo IA ── */}
+      <div className="bg-white rounded-3xl p-6 border border-[#DDD5C4] shadow-sm">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-[#2D6A4F]/10 text-[#2D6A4F] flex items-center justify-center">
+            <FlaskConical size={16} />
+          </div>
+          <div>
+            <h3 className="text-sm font-extrabold text-[#1A1A18] tracking-tight">Hoja de Ruta — Modelo Predictivo Real</h3>
+            <p className="text-[11px] text-[#6B6B67]">Arquitectura propuesta para la siguiente fase de desarrollo</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+          <div className="space-y-2 p-4 bg-[#FAF7F2] rounded-2xl border border-[#EBE4D8]">
+            <span className="font-bold text-[#1A1A18] flex items-center gap-1.5">
+              <Wind size={13} className="text-[#2D6A4F]" />
+              Entradas del Modelo (Features)
             </span>
-            <p className="text-gray-500 leading-relaxed">
-              El modelo XGBoost incorpora lags temporales de las últimas 24 horas y variables vecinas ponderadas por distancia inversa para predecir la difusión de partículas.
+            <p className="text-[#6B6B67] leading-relaxed">
+              PM₂.₅ con lag de 1–24h por nodo, temperatura y humedad de Open-Meteo, velocidad del viento, variables de día de la semana y festivos de Colombia.
             </p>
           </div>
-          <div className="space-y-1.5">
-            <span className="font-bold text-gray-800 flex items-center gap-1">
-              <Thermometer size={14} className="text-tangara" />
-              Variables Climáticas Exógenas
+          <div className="space-y-2 p-4 bg-[#FAF7F2] rounded-2xl border border-[#EBE4D8]">
+            <span className="font-bold text-[#1A1A18] flex items-center gap-1.5">
+              <Thermometer size={13} className="text-[#2D6A4F]" />
+              Arquitectura Propuesta
             </span>
-            <p className="text-gray-500 leading-relaxed">
-              Se entrena cruzando lecturas en tiempo real con datos de temperatura, humedad relativa y velocidad del viento obtenidos de la API meteorológica de Open-Meteo.
+            <p className="text-[#6B6B67] leading-relaxed">
+              XGBoost multivariado con interpolación espacial IDW entre nodos, entrenado sobre los 65.4M+ registros de ClickHouse con validación temporal en bloque (último mes).
             </p>
           </div>
-          <div className="space-y-1.5">
-            <span className="font-bold text-gray-800 flex items-center gap-1">
-              <Droplets size={14} className="text-tangara" />
-              Validación Cruzada Temporal
+          <div className="space-y-2 p-4 bg-[#FAF7F2] rounded-2xl border border-[#EBE4D8]">
+            <span className="font-bold text-[#1A1A18] flex items-center gap-1.5">
+              <Droplets size={13} className="text-[#2D6A4F]" />
+              Métricas Objetivo
             </span>
-            <p className="text-gray-500 leading-relaxed">
-              Evitamos sobreajuste evaluando con un bloque de testeo del último mes (sin mezclar aleatoriamente el tiempo) arrojando un error medio absoluto (MAE) de solo <strong>1.8 µg/m³</strong>.
+            <p className="text-[#6B6B67] leading-relaxed">
+              MAE objetivo &lt; 2.0 µg/m³ en ventana de 6h. Evaluación contra estación IDEAM de San Antonio. El modelo paramétrico actual sirve como <em>baseline</em> de referencia.
             </p>
           </div>
         </div>
       </div>
+
     </div>
   );
 };

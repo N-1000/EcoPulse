@@ -1,5 +1,5 @@
 # ===================================================
-# TANGARA 2026 - Configuración central del backend
+# ECOPULSE 2026 - Configuración central del backend
 # Carga las variables de entorno desde .env de forma tipada.
 # ===================================================
 from functools import lru_cache
@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     clickhouse_user: str = "default"
     clickhouse_password: str = ""
     clickhouse_database: str = "tangara_plata"
+    clickhouse_database_gold: str = "tangara_oro"
     clickhouse_secure: bool = True
 
     # --- App ---

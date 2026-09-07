@@ -1,9 +1,11 @@
+import logging
 from fastapi import APIRouter
 from typing import List, Dict, Any
 from app.db.clickhouse import ping
 from app.services.mock_data import TANGARA_NODES
 from app.services.clickhouse_nodes import get_nodos_clickhouse
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/nodes", tags=["nodos"])
 
 @router.get("")
@@ -17,8 +19,8 @@ async def get_nodes() -> List[Dict[str, Any]]:
             rows = get_nodos_clickhouse()
             if rows:
                 return rows
-        except Exception as e:
-            print(f"Error consultando ClickHouse: {e}")
+        except Exception as exc:
+            logger.error("Error consultando ClickHouse en /api/nodes: %s", exc)
             
     # Fallback transparente con datos mock
     return TANGARA_NODES

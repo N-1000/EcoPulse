@@ -1,10 +1,10 @@
 // ===================================================
-// TANGARA 2026 - pages/EducationPage.tsx
+// ECOPULSE 2026 - pages/EducationPage.tsx
 // Educación Ambiental y Guía del Aire de Cali
 // ===================================================
 import { useState } from 'react';
 import { Leaf, ChevronDown, ChevronUp, BookOpen, AlertCircle } from 'lucide-react';
-import { ICA_LEVELS } from '../mock/airQualityData';
+import { ICA_LEVELS } from '../constants/ica';
 import { levelColor } from '../utils/airQuality';
 
 const FAQS = [

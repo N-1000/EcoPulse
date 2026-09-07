@@ -1,5 +1,5 @@
 // ===================================================
-// TANGARA 2026 - pages/PlaceholderPage.tsx
+// ECOPULSE 2026 - pages/PlaceholderPage.tsx
 // Vista temporal para secciones del menú aún no desarrolladas.
 // Para crear una vista real: crea src/pages/<Nombre>Page.tsx y
 // regístrala en el switch de Layout.tsx.

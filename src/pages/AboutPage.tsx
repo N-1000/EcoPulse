@@ -1,5 +1,5 @@
 // ===================================================
-// TANGARA 2026 - pages/AboutPage.tsx
+// ECOPULSE 2026 - pages/AboutPage.tsx
 // Acerca de la Plataforma Tangara
 // ===================================================
 import { Info, Code2, Database, LayoutTemplate, ShieldCheck } from 'lucide-react';

@@ -1,7 +1,10 @@
-# -*- coding: utf-8 -*-
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from app.db.clickhouse import ping, query_rows
+from app.utils.ica import calcular_ica_pm25
+
+logger = logging.getLogger(__name__)
 
 RANGOS_VALIDOS = {
     "temperatura": (-10, 50),      # °C razonable para Cali
@@ -48,26 +51,6 @@ def decode_geohash(geohash: str) -> tuple[float, float]:
     lon = (lon_interval[0] + lon_interval[1]) / 2
     return lat, lon
 
-def calcular_ica_pm25(pm25: float | None) -> dict:
-    if pm25 is None or pm25 < 0:
-        return {"ica": 0, "level": "buena"}
-    
-    breakpoints = [
-        (0.0, 12.0, 0, 50, "buena"),
-        (12.1, 35.4, 51, 100, "moderada"),
-        (35.5, 55.4, 101, 150, "dañina-grupos-sensibles"),
-        (55.5, 150.4, 151, 200, "dañina"),
-        (150.5, 250.4, 201, 300, "muy-dañina"),
-        (250.5, 500.4, 301, 500, "peligrosa")
-    ]
-    
-    for c_low, c_high, i_low, i_high, level in breakpoints:
-        if pm25 <= c_high:
-            ica = ((i_high - i_low) / (c_high - c_low)) * (pm25 - c_low) + i_low
-            return {"ica": int(round(ica)), "level": level}
-            
-    return {"ica": 500, "level": "peligrosa"}
-
 def get_nodos_clickhouse() -> List[Dict[str, Any]]:
     """Consulta la última lectura de cada sensor desde la tabla real en ClickHouse."""
     query = """
@@ -76,7 +59,7 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
             argMax(geo, time)  AS geohash,
             argMax(tmp, time)  AS temperatura,
             argMax(hum, time)  AS humedad,
-            argMax(pm25, time) AS pm25,
+            if(isNaN(avgIf(pm25, time >= now() - INTERVAL 1 HOUR AND pm25 >= 0 AND pm25 <= 500)) OR avgIf(pm25, time >= now() - INTERVAL 1 HOUR AND pm25 >= 0 AND pm25 <= 500) = 0, argMax(pm25, time), avgIf(pm25, time >= now() - INTERVAL 1 HOUR AND pm25 >= 0 AND pm25 <= 500)) AS pm25,
             argMax(co2, time)  AS co2,
             max(time)          AS ultima_lectura_utc
         FROM tangara_plata.plata_tangara_sensores
@@ -106,7 +89,8 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
         # Decodificar geohash
         try:
             lat, lng = decode_geohash(geohash)
-        except Exception:
+        except Exception as exc:
+            logger.warning("Fallo al decodificar geohash '%s' para el sensor '%s': %s", geohash, sensor_id, exc)
             lat, lng = 3.4372, -76.5222  # Cali centro de fallback
             
         # Formatear la hora
@@ -116,6 +100,17 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
         else:
             ultima_cali = str(ultima_utc)
             
+        # Determinar estado: un nodo está activo si mide PM2.5, CO2 o Temperatura
+        tiene_lectura_valida = (
+            (pm25_clean is not None and pm25_clean > 0) or
+            (co2_clean is not None and co2_clean > 0) or
+            (tmp_clean is not None and tmp_clean > 0)
+        )
+        status = "activo" if tiene_lectura_valida else "inactivo"
+
+        # Detectar tipo de sensor por ID: TTGO miden CO2, ESP32 miden PM2.5
+        sensor_type = "co2" if "TTGOT" in sensor_id else "pm25"
+
         nodos.append({
             "id": sensor_id,
             "name": f"Nodo {sensor_id[:6]}",
@@ -123,15 +118,16 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
             "coordinates": {"lat": lat, "lng": lng},
             "comuna": "Cali",
             "barrio": "Cali",
-            "status": "activo",
+            "status": status,
             "lastUpdate": ultima_cali,
+            "sensorType": sensor_type,
             "measurements": {
-                "temperature": tmp_clean if tmp_clean is not None else 25.0,
-                "humidity": hum_clean if hum_clean is not None else 65.0,
-                "pm25": pm25_clean if pm25_clean is not None else 15.0,
-                "co2": co2_clean if co2_clean is not None else 400.0,
-                "ica": ica_info["ica"],
-                "level": ica_info["level"]
+                "temperature": tmp_clean if tmp_clean is not None else 0.0,
+                "humidity": hum_clean if hum_clean is not None else 0.0,
+                "pm25": pm25_clean if pm25_clean is not None else 0.0,
+                "co2": co2_clean if co2_clean is not None else 0.0,
+                "ica": ica_info["ica"] if tiene_lectura_valida else 0,
+                "level": ica_info["level"] if tiene_lectura_valida else "buena"
             }
         })
     return nodos

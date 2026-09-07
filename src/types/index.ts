@@ -1,5 +1,5 @@
 // ===================================================
-// TANGARA 2026 - Inteligencia Ambiental Urbana
+// ECOPULSE 2026 - Inteligencia Ambiental Urbana
 // types/index.ts — Interfaces y tipos centrales
 // ===================================================
 
@@ -7,13 +7,22 @@
 // CHATBOT
 // --------------------------------------------------
 
-export type MessageSender = 'user' | 'tangara-ai';
+export type MessageSender = 'user' | 'ecopulse-ai';
+
+/** Tipos de acciones que la IA puede ordenar a la interfaz de usuario */
+export type UIActionType = 'navigate' | 'draw_route_map' | 'show_quality_air';
+
+export interface UIAction {
+  type: UIActionType;
+  payload: Record<string, any>;
+}
 
 export interface Message {
   id: string;
   sender: MessageSender;
   text: string;
   timestamp: Date;
+  aiActions?: UIAction[];
 }
 
 // --------------------------------------------------
@@ -35,6 +44,7 @@ export interface AirQualityLevelInfo {
   bgColor: string;        // Color de fondo para badges / gráficas
   range: [number, number];// Rango ICA [min, max]
   description: string;
+  recommendation?: string;// Recomendación médica / salud pública (Pilar 2)
 }
 
 export interface Contaminant {
@@ -119,14 +129,19 @@ export interface HistoricalData {
 // NOTICIAS AMBIENTALES
 // --------------------------------------------------
 
-export type NewsCategory = 'COMUNIDAD' | 'PROGRESO' | 'ALERTA' | 'CIENCIA';
+export type NewsCategory = 'COMUNIDAD' | 'PROGRESO' | 'ALERTA' | 'CIENCIA' | 'CLIMA';
 
 export interface NewsItem {
   id: string;
   title: string;
   category: NewsCategory;
   summary: string;
-  date: string;
+  date?: string;
+  source?: string;
+  url?: string;
+  timeAgo?: string;
+  dateFormatted?: string;
+  publishedAt?: string;
   imageUrl?: string;
 }
 
@@ -169,7 +184,7 @@ export interface NavItem {
 }
 
 // --------------------------------------------------
-// NODOS TANGARA (SENSORES)
+// NODOS ECOPULSE (SENSORES)
 // --------------------------------------------------
 
 /** Coordenada geográfica decodificada (la entregará el backend). */
@@ -185,14 +200,15 @@ export interface NodeMeasurements {
   temperature: number;    // °C
   humidity: number;       // % humedad relativa
   pm25: number;           // µg/m³
+  co2?: number;           // ppm (opcional, reportado por nodos TTGO/CO2)
   ica: number;            // Índice de Calidad del Aire derivado
   level: AirQualityLevel;
 }
 
 /**
- * Nodo sensor de la red Tangara.
+ * Nodo sensor de la red EcoPulse.
  *
- * IMPORTANTE (integración futura con ClickHouse):
+ * IMPORTANTE (integración con ClickHouse):
  * - El firmware de los sensores reporta la ubicación como **Geohash**
  *   (no lat/lng) para reducir el tamaño de los paquetes.
  * - `coordinates` contiene la posición ya decodificada; en producción la
@@ -210,6 +226,7 @@ export interface TangaraNode {
   status: NodeStatus;
   lastUpdate: string;     // ISO 8601
   measurements: NodeMeasurements;
+  sensorType?: 'pm25' | 'co2';  // tipo de sensor: pm25 (ESP32) o co2 (TTGO)
 }
 
 /** Grupo de nodos que comparten la misma ubicación (mismo geohash). */
@@ -226,7 +243,7 @@ export interface NodeCluster {
 export interface SuggestedQuestion {
   id: string;
   text: string;           // Pregunta mostrada al usuario
-  answer: string;         // Respuesta simulada (luego la generará la IA real)
+  answer?: string;         // Respuesta simulada (luego la generará la IA real)
 }
 
 export type TransportMode = 'walk' | 'bike' | 'skates' | 'skateboard' | 'escooter';

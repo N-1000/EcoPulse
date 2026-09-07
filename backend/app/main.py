@@ -1,5 +1,5 @@
 # ===================================================
-# TANGARA 2026 - Punto de entrada FastAPI
+# ECOPULSE 2026 - Punto de entrada FastAPI
 # Inteligencia Ambiental Urbana · Cali - Valle del Cauca
 # ===================================================
 from fastapi import FastAPI
@@ -7,16 +7,19 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.db.clickhouse import ping
-from app.routers import meta, nodes, routing
+from app.routers import meta, nodes, routing, air_quality, chat, news
 
-settings = get_settings()
 
 app = FastAPI(
-    title="Tangara 2026 API",
+    title="EcoPulse API",
     description="Backend de Inteligencia Ambiental Urbana. Consume la capa Silver "
-    "(tangara_plata) de ClickHouse mediante consultas agregadas y eficientes.",
+    "(tangara_plata) para sensores en vivo y la capa Oro (tangara_oro) para analíticas.",
     version="0.1.0",
 )
+
+app.include_router(chat.router)
+
+settings = get_settings()
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,6 +32,8 @@ app.add_middleware(
 app.include_router(meta.router)
 app.include_router(nodes.router)
 app.include_router(routing.router)
+app.include_router(air_quality.router)
+app.include_router(news.router)
 
 
 @app.get("/health", tags=["salud"])

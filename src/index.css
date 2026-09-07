@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
@@ -10,61 +11,69 @@
   }
 
   html, body, #root {
-    height: 100%;
+    min-height: 100%;
     margin: 0;
     padding: 0;
+    overflow-x: hidden;
+  }
+
+  html {
+    overflow-x: hidden;
   }
 
   body {
     font-family: 'Inter', system-ui, sans-serif;
-    background: radial-gradient(circle at top left, #F0F4F8, #E2E8F0);
-    background-attachment: fixed;
-    color: #1F2937;
+    background-color: #F2E8D5;
+    color: #1A1A18;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    /* Ocultar scrollbar en todos los navegadores sin perder el scroll */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
   }
 
-  /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+  body::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
   }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background-color: #D1D5DB;
-    border-radius: 999px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: #9CA3AF;
+
+  #root {
+    overflow-x: hidden;
+    min-height: 100%;
   }
 }
 
 @layer components {
+  /* Widget base — sin sombras duras, borde sutil */
   .card {
-    @apply bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60;
+    @apply bg-white border border-[#EBEBEA] rounded-2xl;
   }
 
   .card-hover {
-    @apply hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300;
+    @apply transition-all duration-200 hover:border-[#D0D0CA];
   }
 
+  /* Badges de calidad del aire — tonos desaturados y naturales */
   .badge-buena {
-    @apply bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full;
+    @apply bg-[#E8F5EE] text-[#2D6A4F] text-xs font-semibold px-2.5 py-0.5 rounded-full;
   }
   .badge-moderada {
-    @apply bg-yellow-100 text-yellow-700 text-xs font-semibold px-2.5 py-1 rounded-full;
+    @apply bg-[#FFF8E6] text-[#96640A] text-xs font-semibold px-2.5 py-0.5 rounded-full;
   }
   .badge-dfsg {
-    @apply bg-orange-100 text-orange-700 text-xs font-semibold px-2.5 py-1 rounded-full;
+    @apply bg-[#FFF0EB] text-[#C04A28] text-xs font-semibold px-2.5 py-0.5 rounded-full;
   }
   .badge-danina {
-    @apply bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-1 rounded-full;
+    @apply bg-[#FEEDED] text-[#B91C1C] text-xs font-semibold px-2.5 py-0.5 rounded-full;
+  }
+
+  /* Sección label — jerarquía tipográfica */
+  .section-label {
+    @apply text-xs font-semibold text-[#6B6B67] uppercase tracking-widest;
   }
 }
 
-/* Animación de typing dots para el chatbot */
+/* ── Animación typing dots para el chatbot ───────────────────── */
 .typing-dot {
   animation: typing 1.4s ease-in-out infinite;
 }
@@ -72,52 +81,51 @@
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes typing {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-  30% { transform: translateY(-6px); opacity: 1; }
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+  30%            { transform: translateY(-5px); opacity: 1; }
 }
 
-/* Estilos Premium para el Mapa */
+/* ── Mapa — Viento ───────────────────────────────────────────── */
 @keyframes windFlow {
-  0% {
-    stroke-dashoffset: 100;
-  }
-  100% {
-    stroke-dashoffset: 0;
-  }
+  0%   { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0;   }
 }
 
 .wind-stream {
   stroke-dasharray: 10, 20;
   animation: windFlow 12s linear infinite;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 1px rgba(14, 165, 233, 0.2));
 }
 
+@keyframes fluir-viento {
+  from { stroke-dashoffset: 40; }
+  to   { stroke-dashoffset: 0;  }
+}
+
+.wind-flow-normal {
+  animation: fluir-viento 2.5s linear infinite;
+  stroke-dasharray: 10, 30;
+  stroke-linecap: round;
+}
+
+.wind-flow-fast {
+  animation: fluir-viento 1.2s linear infinite;
+  stroke-dasharray: 10, 20;
+  stroke-linecap: round;
+}
+
+/* ── Mapa — Marcadores ───────────────────────────────────────── */
 .marker-halo {
   transform-origin: center;
   animation: markerGlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 @keyframes markerGlow {
-  0%, 100% {
-    transform: scale(0.85);
-    opacity: 0.15;
-  }
-  50% {
-    transform: scale(1.25);
-    opacity: 0.45;
-  }
+  0%, 100% { transform: scale(0.85); opacity: 0.12; }
+  50%       { transform: scale(1.25); opacity: 0.4;  }
 }
 
-/* ── Tr\u00e1fico en el mapa \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-
-/* Marcadores de carro pulsantes en zonas congestionadas */
-@keyframes trafficPulse {
-  0%, 100% { transform: scale(1);   box-shadow: 0 0 0 4px rgba(239,68,68,0.25); }
-  50%       { transform: scale(1.2); box-shadow: 0 0 0 8px rgba(239,68,68,0.08); }
-}
-
-/* Guiones animados que corren sobre la l\u00ednea de la ruta */
+/* ── Mapa — Ruta saludable ───────────────────────────────────── */
 .route-dash-anim {
   stroke-dashoffset: 0;
   animation: dashFlow 1.2s linear infinite;
@@ -125,5 +133,11 @@
 
 @keyframes dashFlow {
   from { stroke-dashoffset: 22; }
-  to   { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: 0;  }
+}
+
+/* ── Tráfico ─────────────────────────────────────────────────── */
+@keyframes trafficPulse {
+  0%, 100% { transform: scale(1);   box-shadow: 0 0 0 4px rgba(239,68,68,0.2); }
+  50%       { transform: scale(1.2); box-shadow: 0 0 0 8px rgba(239,68,68,0.05); }
 }

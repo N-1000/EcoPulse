@@ -1,9 +1,9 @@
 // ===================================================
-// TANGARA 2026 - utils/geo.ts
+// ECOPULSE 2026 - utils/geo.ts
 // Utilidades geográficas para el mapa de nodos.
 //
 // NOTA SOBRE GEOHASH (http://geohash.co/):
-// Los sensores Tangara reportan su ubicación como Geohash para reducir
+// Los sensores EcoPulse reportan su ubicación como Geohash para reducir
 // el tamaño de los paquetes del firmware. La conversión Geohash -> lat/lng
 // NO se hace en el frontend: el backend (FastAPI) entregará los nodos con
 // `coordinates` ya decodificadas. Aquí solo se proyecta y se agrupa.
@@ -42,17 +42,15 @@ export const projectToCanvas = (
 export const clusterNodesByLocation = (nodes: TangaraNode[]): NodeCluster[] => {
   const groups = new Map<string, TangaraNode[]>();
   for (const node of nodes) {
-    if (!node.coordinates) continue;
-    const existing = groups.get(node.geohash);
-    if (existing) {
-      existing.push(node);
-    } else {
-      groups.set(node.geohash, [node]);
-    }
+    if (!node.coordinates || typeof node.coordinates.lat !== 'number' || typeof node.coordinates.lng !== 'number') continue;
+    const key = node.geohash || `${node.coordinates.lat.toFixed(4)}_${node.coordinates.lng.toFixed(4)}`;
+    const list = groups.get(key) ?? [];
+    list.push(node);
+    groups.set(key, list);
   }
   return Array.from(groups.entries()).map(([geohash, grouped]) => ({
     geohash,
-    coordinates: grouped[0].coordinates as GeoPoint,
+    coordinates: grouped[0].coordinates,
     nodes: grouped,
   }));
 };
