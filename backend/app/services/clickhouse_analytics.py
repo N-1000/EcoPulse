@@ -379,7 +379,7 @@ def get_serie_por_sensor() -> Dict[str, Any]:
             SELECT
                 name AS sensor_id,
                 toStartOfInterval(toTimeZone(time, 'America/Bogota'), INTERVAL 30 MINUTE) AS intervalo,
-                round(avg(pm25), 2) AS pm25
+                round(avg(pm25), 2) AS avg_pm25
             FROM {settings.clickhouse_database}.plata_tangara_sensores
             WHERE time >= now() - INTERVAL 24 HOUR
               AND name IN {sensors_tuple}
@@ -407,7 +407,7 @@ def get_serie_por_sensor() -> Dict[str, Any]:
             else:
                 label = str(ts)
             all_intervals.add(label)
-            sensor_series[sid].append({"t": label, "v": float(r["pm25"])})
+            sensor_series[sid].append({"t": label, "v": float(r["avg_pm25"])})
 
         # Paso 4: promedio general por intervalo
         avg_by_interval: Dict[str, List[float]] = defaultdict(list)
