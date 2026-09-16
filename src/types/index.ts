@@ -10,7 +10,7 @@
 export type MessageSender = 'user' | 'ecopulse-ai';
 
 /** Tipos de acciones que la IA puede ordenar a la interfaz de usuario */
-export type UIActionType = 'navigate' | 'draw_route_map' | 'show_quality_air';
+export type UIActionType = 'navigate' | 'show_quality_air';
 
 export interface UIAction {
   type: UIActionType;

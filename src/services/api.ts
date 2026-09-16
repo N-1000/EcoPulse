@@ -6,14 +6,12 @@
 //   GET  /api/nodes                          -> TangaraNode[]
 //   GET  /api/v1/air-quality/trends-24h      -> WeeklyTrend
 //   GET  /api/v1/air-quality/monthly-historical -> MonthRecord[]
-//   GET  /api/v1/air-quality/forecast        -> DayForecast[]
 //   GET  /api/routing/green-zones            -> park[]
 //   GET  /api/routing/best-destination       -> park
 //   POST /api/routing/healthy-route          -> RouteResult
 // ===================================================
 import type {
   AirQualityMetrics,
-  DayForecast,
   TangaraNode,
   WeeklyTrend,
   UIAction,
@@ -98,17 +96,6 @@ export const fetchMonthlyHistorical = (year = '2026'): Promise<any[]> =>
     .catch(() => {
       console.warn('[EcoPulse] Backend no disponible — histórico mensual vacío.');
       return [] as any[];
-    });
-
-// --------------------------------------------------
-// Pronóstico (vacío si backend no disponible)
-// --------------------------------------------------
-export const fetchForecast = (): Promise<DayForecast[]> =>
-  fetch(`${API_BASE_URL}/api/v1/air-quality/forecast`)
-    .then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<DayForecast[]>; })
-    .catch(() => {
-      console.warn('[EcoPulse] Backend no disponible — pronóstico vacío.');
-      return [] as DayForecast[];
     });
 
 // --------------------------------------------------
