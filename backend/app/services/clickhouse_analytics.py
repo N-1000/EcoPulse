@@ -7,9 +7,12 @@
 # ===================================================
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+import logging
 import time
 from app.db.clickhouse import query_rows, ping
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 # Breakpoints estándar EPA / Resolución 2254 (C_low, C_high, I_low, I_high)
@@ -49,6 +52,9 @@ def get_monthly_historical_clickhouse(year: str = "2026") -> List[Dict[str, Any]
 
     settings = get_settings()
     if not ping():
+        logger.warning(
+            "get_monthly_historical_clickhouse(year=%s): fallback sintético — ping a ClickHouse falló", year
+        )
         return _fallback_monthly_historical(year)
 
     query = f"""
@@ -67,8 +73,13 @@ def get_monthly_historical_clickhouse(year: str = "2026") -> List[Dict[str, Any]
             formatted = _format_all_12_months(rows, int(year))
             _CACHE_MONTHLY[year] = (now_ts, formatted)
             return formatted
-    except Exception:
-        pass
+        logger.warning(
+            "get_monthly_historical_clickhouse(year=%s): fallback sintético — la query no devolvió filas", year
+        )
+    except Exception as exc:
+        logger.warning(
+            "get_monthly_historical_clickhouse(year=%s): fallback sintético — excepción en la query: %s", year, exc
+        )
 
     fallback = _fallback_monthly_historical(year)
     _CACHE_MONTHLY[year] = (now_ts, fallback)
@@ -89,6 +100,9 @@ def get_24h_trends_clickhouse(metric: str = "24h") -> Dict[str, Any]:
 
     settings = get_settings()
     if not ping():
+        logger.warning(
+            "get_24h_trends_clickhouse(metric=%s): fallback sintético — ping a ClickHouse falló", metric_clean
+        )
         return _fallback_24h_trends(metric_clean)
 
     # Consulta cronológica exacta convertida a la zona horaria de Cali (UTC-5)
@@ -109,8 +123,14 @@ def get_24h_trends_clickhouse(metric: str = "24h") -> Dict[str, Any]:
             result = _format_chronological_trend_rows(rows, metric_clean)
             _CACHE_TRENDS[metric_clean] = (now_ts, result)
             return result
-    except Exception:
-        pass
+        logger.warning(
+            "get_24h_trends_clickhouse(metric=%s): fallback sintético — solo %d filas (mínimo 6)",
+            metric_clean, len(rows),
+        )
+    except Exception as exc:
+        logger.warning(
+            "get_24h_trends_clickhouse(metric=%s): fallback sintético — excepción en la query: %s", metric_clean, exc
+        )
 
     fallback = _fallback_24h_trends(metric_clean)
     _CACHE_TRENDS[metric_clean] = (now_ts, fallback)
@@ -327,6 +347,7 @@ def get_serie_por_sensor() -> Dict[str, Any]:
 
     settings = get_settings()
     if not ping():
+        logger.warning("get_serie_por_sensor: fallback sintético — ping a ClickHouse falló")
         return _fallback_serie_por_sensor()
 
     try:
@@ -346,6 +367,7 @@ def get_serie_por_sensor() -> Dict[str, Any]:
         """
         top_rows = query_rows(query_top)
         if not top_rows:
+            logger.warning("get_serie_por_sensor: fallback sintético — sin sensores con >=10 lecturas en 24h")
             return _fallback_serie_por_sensor()
 
         top_sensors = [r["sensor_id"] for r in top_rows]
@@ -415,7 +437,8 @@ def get_serie_por_sensor() -> Dict[str, Any]:
         _CACHE_SENSOR_SERIE_DATA = (now_ts, result)
         return result
 
-    except Exception:
+    except Exception as exc:
+        logger.warning("get_serie_por_sensor: fallback sintético — excepción: %s", exc)
         fallback = _fallback_serie_por_sensor()
         _CACHE_SENSOR_SERIE_DATA = (now_ts, fallback)
         return fallback

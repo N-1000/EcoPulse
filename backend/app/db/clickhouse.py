@@ -5,6 +5,7 @@
 # ===================================================
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import logging
@@ -14,29 +15,48 @@ from clickhouse_connect.driver.client import Client
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
-_client: Client | None = None
+
+# clickhouse-connect NO soporta queries concurrentes sobre la misma instancia
+# de Client: cada instancia mantiene un session_id propio en el servidor, y
+# dos queries simultáneas sobre el mismo Client chocan con "Attempt to
+# execute concurrent queries within the same session".
+#
+# Los endpoints síncronos de FastAPI (routers declarados con `def`, no
+# `async def`) corren en el threadpool de Starlette, así que bajo carga
+# real (el HomePage dispara varios fetches en paralelo) sí hay dos hilos
+# distintos llamando a query_rows() al mismo tiempo. Un singleton global
+# rompe ahí.
+#
+# La solución es un cliente por hilo (`threading.local`), no un pool manual:
+# el threadpool de Starlette reutiliza un número acotado de hilos worker
+# entre requests, así que cada hilo crea su Client una sola vez y lo
+# reutiliza en las siguientes requests que le toquen — sin la sobrecarga de
+# abrir conexión en cada query, y sin el riesgo de compartir sesión entre
+# hilos concurrentes.
+_thread_local = threading.local()
+
+
+def _build_client() -> Client:
+    settings = get_settings()
+    return clickhouse_connect.get_client(
+        host=settings.clickhouse_host,
+        port=settings.clickhouse_port,
+        username=settings.clickhouse_user,
+        password=settings.clickhouse_password,
+        database=settings.clickhouse_database,
+        secure=settings.clickhouse_secure,
+        # Read-only a nivel de sesión: bloquea cualquier escritura accidental.
+        settings={"readonly": 1},
+    )
 
 
 def get_client() -> Client:
-    """Devuelve un cliente ClickHouse reutilizable (singleton perezoso).
-
-    clickhouse-connect usa HTTP(S) y mantiene un pool de conexiones interno,
-    por lo que es seguro compartir una sola instancia en toda la app.
-    """
-    global _client
-    if _client is None:
-        settings = get_settings()
-        _client = clickhouse_connect.get_client(
-            host=settings.clickhouse_host,
-            port=settings.clickhouse_port,
-            username=settings.clickhouse_user,
-            password=settings.clickhouse_password,
-            database=settings.clickhouse_database,
-            secure=settings.clickhouse_secure,
-            # Read-only a nivel de sesión: bloquea cualquier escritura accidental.
-            settings={"readonly": 1},
-        )
-    return _client
+    """Devuelve el cliente ClickHouse del hilo actual (uno por hilo, perezoso)."""
+    client = getattr(_thread_local, "client", None)
+    if client is None:
+        client = _build_client()
+        _thread_local.client = client
+    return client
 
 
 def query_rows(sql: str, parameters: dict[str, Any] | None = None) -> list[dict[str, Any]]:

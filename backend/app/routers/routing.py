@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter
 from typing import Dict, Any, List
 from app.models.route import RouteRequest, RouteResult
@@ -5,6 +6,7 @@ from app.services.routing import select_best_destination, calculate_healthy_rout
 from app.services.mock_data import TANGARA_NODES
 from app.db.clickhouse import ping
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/routing", tags=["ruteo"])
 
 def _get_nodes() -> List[Dict[str, Any]]:
@@ -15,8 +17,11 @@ def _get_nodes() -> List[Dict[str, Any]]:
             rows = get_nodos_clickhouse()
             if rows:
                 return rows
-        except Exception:
-            pass
+            logger.warning("routing._get_nodes: fallback a datos mock — ClickHouse respondió sin filas")
+        except Exception as exc:
+            logger.warning("routing._get_nodes: fallback a datos mock — excepción consultando ClickHouse: %s", exc)
+    else:
+        logger.warning("routing._get_nodes: fallback a datos mock — ping a ClickHouse falló")
     return TANGARA_NODES
 
 @router.get("/green-zones")

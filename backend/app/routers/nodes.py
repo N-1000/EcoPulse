@@ -19,8 +19,10 @@ async def get_nodes() -> List[Dict[str, Any]]:
             rows = get_nodos_clickhouse()
             if rows:
                 return rows
+            logger.warning("/api/nodes: fallback a datos mock — ClickHouse respondió sin filas")
         except Exception as exc:
-            logger.error("Error consultando ClickHouse en /api/nodes: %s", exc)
-            
-    # Fallback transparente con datos mock
+            logger.error("/api/nodes: fallback a datos mock — excepción consultando ClickHouse: %s", exc)
+    else:
+        logger.warning("/api/nodes: fallback a datos mock — ping a ClickHouse falló")
+
     return TANGARA_NODES
