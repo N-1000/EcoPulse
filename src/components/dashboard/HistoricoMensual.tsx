@@ -101,6 +101,7 @@ const HistoricoMensual = () => {
         const isCurrent = year === '2026' && d.monthIdx === currentMonthIdx;
         return {
           ...d,
+          ica: isCurrent && currentRealIca > 0 ? currentRealIca : d.ica,
           isCurrentMonth: isCurrent,
         };
       });
@@ -112,13 +113,13 @@ const HistoricoMensual = () => {
       const isCurrent = year === '2026' && idx === currentMonthIdx;
       return {
         ...m,
-        ica: fb.ica,
+        ica: isCurrent && currentRealIca > 0 ? currentRealIca : fb.ica,
         pm25: fb.pm25,
         readings: fb.readings,
         isCurrentMonth: isCurrent,
       };
     });
-  }, [year, dataByYear, currentMonthIdx]);
+  }, [year, dataByYear, currentMonthIdx, currentRealIca]);
 
   const measuredMonths = useMemo(() => data.filter(d => d.ica !== null), [data]);
   const avg = Math.round(

@@ -4,7 +4,7 @@
 // Formato 100% AM / PM (sin hora militar) y diagnóstico integral
 // ===================================================
 import { useState, useMemo } from 'react';
-import { Clock, Sun, Moon, Wind, Car, Sparkles, Activity, Baby, ShieldCheck, Home } from 'lucide-react';
+import { Clock, Sun, Moon, Wind, Car, Sparkles, Activity, Baby, Home } from 'lucide-react';
 import { useNodes } from '../../hooks/useNodes';
 import { calculateNodeMetrics } from '../../utils/nodeMetrics';
 import { getIcaLevel } from '../../utils/airQuality';

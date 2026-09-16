@@ -39,13 +39,17 @@ export const projectToCanvas = (
  * mientras se calibran o prueban: es un estado normal, no un error.
  * Los nodos sin coordenadas decodificadas se excluyen del mapa.
  */
+/** Nodo cuyas coordenadas ya fueron decodificadas por el backend. */
+type LocatedNode = TangaraNode & { coordinates: GeoPoint };
+
 export const clusterNodesByLocation = (nodes: TangaraNode[]): NodeCluster[] => {
-  const groups = new Map<string, TangaraNode[]>();
+  const groups = new Map<string, LocatedNode[]>();
   for (const node of nodes) {
-    if (!node.coordinates || typeof node.coordinates.lat !== 'number' || typeof node.coordinates.lng !== 'number') continue;
-    const key = node.geohash || `${node.coordinates.lat.toFixed(4)}_${node.coordinates.lng.toFixed(4)}`;
+    const coordinates = node.coordinates;
+    if (!coordinates || typeof coordinates.lat !== 'number' || typeof coordinates.lng !== 'number') continue;
+    const key = node.geohash || `${coordinates.lat.toFixed(4)}_${coordinates.lng.toFixed(4)}`;
     const list = groups.get(key) ?? [];
-    list.push(node);
+    list.push({ ...node, coordinates });
     groups.set(key, list);
   }
   return Array.from(groups.entries()).map(([geohash, grouped]) => ({

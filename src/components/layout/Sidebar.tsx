@@ -11,7 +11,7 @@ import {
   LineChart, Map, Newspaper, Settings, TrendingUp, Users, Wind, X,
   type LucideIcon,
 } from 'lucide-react';
-import BrandLogo from '../common/BrandLogo';
+import type { CSSProperties } from 'react';
 import type { NavItem, PageId } from '../../types';
 
 const PRIMARY_NAV: NavItem[] = [
@@ -157,9 +157,9 @@ const SidebarContent = ({ collapsed, activePage, onNavigate }: SidebarContentPro
           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ring-2 group-hover:scale-105 transition-transform"
           style={{
             background: 'linear-gradient(135deg, #2D6A4F, #D05A3F)',
-            ringColor: 'rgba(255,255,255,0.2)',
+            '--tw-ring-color': 'rgba(255,255,255,0.2)',
             boxShadow: '0 0 10px rgba(45,106,79,0.5)',
-          }}
+          } as CSSProperties}
         >
           CI
         </div>

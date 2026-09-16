@@ -13,7 +13,6 @@ import type {
   WeeklyTrend,
   DayForecast,
   HistoricalData,
-  NewsItem,
 } from '../types';
 
 // --------------------------------------------------

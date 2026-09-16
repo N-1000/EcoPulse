@@ -14,7 +14,7 @@ const FooterBar = ({ onNavigate }: FooterBarProps) => {
       {/* Navegación pills izquierda */}
       <nav className="flex items-center gap-2 text-xs font-semibold text-[#5A5A56]">
         <button className="opacity-50">‹</button>
-        {(['inicio', 'mapa', 'calidad-aire', 'sobre'] as PageId[]).map((id, i) => {
+        {(['inicio', 'mapa', 'calidad-aire', 'sobre'] as PageId[]).map((id) => {
           const labels: Record<string, string> = {
             'inicio': 'Inicio', 'mapa': 'Mapas',
             'calidad-aire': 'Datos', 'sobre': 'Nosotros',

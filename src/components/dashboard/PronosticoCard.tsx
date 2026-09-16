@@ -16,7 +16,6 @@ import {
   Umbrella,
   RefreshCw,
   Compass,
-  AlertCircle,
   Clock,
 } from 'lucide-react';
 import { useAirQuality } from '../../hooks/useAirQuality';
@@ -77,7 +76,6 @@ const PronosticoCard = () => {
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0);
   const { metrics } = useAirQuality();
   const [apiData, setApiData] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -96,11 +94,9 @@ const PronosticoCard = () => {
           setApiData(data);
           setLastUpdated(new Date());
         }
-        setLoading(false);
         setIsRefreshing(false);
       })
       .catch(() => {
-        setLoading(false);
         setIsRefreshing(false);
       });
   }, []);

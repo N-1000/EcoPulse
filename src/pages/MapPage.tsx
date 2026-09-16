@@ -2,13 +2,13 @@
 // ECOPULSE 2026 - pages/MapPage.tsx  —  Light Mode + Ruta Saludable
 // ===================================================
 import { useMemo, useState, useEffect, useRef, Fragment } from 'react';
-import { CloudSun, Wind, Footprints, Bike, Zap, Activity } from 'lucide-react';
+import { CloudSun, Wind, Footprints } from 'lucide-react';
 import { MapContainer, TileLayer, WMSTileLayer, Marker, Polyline, useMap, ZoomControl, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { useMapData } from '../hooks/useMapData';
 import { getClusterMetrics } from '../utils/airQuality';
 import { fetchGreenZones, fetchBestDestination, fetchHealthyRoute } from '../services/api';
-import type { NodeCluster, RouteResult, TransportMode } from '../types';
+import type { NodeCluster, RoutePoint, RouteResult, TransportMode } from '../types';
 import { NodeDetailPanel } from '../components/map/NodeDetailPanel';
 import { HealthyRoutePanel } from '../components/map/HealthyRoutePanel';
 import { MapLegend } from '../components/map/MapLegend';
@@ -143,28 +143,6 @@ const MapEvents = ({ clickHandlerRef }: { clickHandlerRef: React.MutableRefObjec
   return null;
 };
 
-
-// Generador dinámico de corrientes de viento
-const generateWindStreams = (direction: number, center: [number, number]): [number, number][][] => {
-  const rad = (direction * Math.PI) / 180;
-  const dLat = -Math.cos(rad);
-  const dLng = -Math.sin(rad);
-  const pLat = -dLng;
-  const pLng = dLat;
-
-  // 7 corrientes de viento con espaciado ideal de 0.02 grados
-  const offsets = [-0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06];
-  return offsets.map(offsetFactor => {
-    const points: [number, number][] = [];
-    for (let t = -0.12; t <= 0.12; t += 0.015) {
-      const wave = Math.sin(t * 160) * 0.0035;
-      const lat = center[0] + (offsetFactor * pLat) + (t * dLat) + (wave * pLat);
-      const lng = center[1] + (offsetFactor * pLng) + (t * dLng) + (wave * pLng);
-      points.push([lat, lng]);
-    }
-    return points;
-  });
-};
 
 // --------------------------------------------------
 // Página principal del mapa
