@@ -9,8 +9,11 @@ Servidores usados (gratuitos, sin API key):
 Si el servidor del perfil específico falla, intenta con driving como fallback.
 """
 
+import logging
 import httpx
 from typing import List, Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # Servidores OSRM por perfil de transporte
 OSRM_SERVERS = {
@@ -37,6 +40,7 @@ async def _call_osrm(server: str, start: List[float], end: List[float]) -> Optio
         async with httpx.AsyncClient(timeout=8.0) as client:
             res = await client.get(url, params=params)
             if res.status_code != 200:
+                logger.warning("_call_osrm(%s): sin ruta — respuesta %s", server, res.status_code)
                 return None
             data = res.json()
             if data and data.get("routes"):
@@ -44,8 +48,9 @@ async def _call_osrm(server: str, start: List[float], end: List[float]) -> Optio
                 coordinates = [[pt[1], pt[0]] for pt in route["geometry"]["coordinates"]]
                 distance_km = round(route["distance"] / 1000.0, 2)
                 return {"path": coordinates, "distance": distance_km}
-    except Exception as e:
-        print(f"[OSRM] Error con {server}: {e}")
+            logger.warning("_call_osrm(%s): respuesta sin 'routes'", server)
+    except Exception as exc:
+        logger.warning("_call_osrm(%s): excepción: %s", server, exc)
     return None
 
 
@@ -68,9 +73,10 @@ async def fetch_osrm_route(
 
     # Fallback a driving si el perfil específico falla
     if profile != "driving":
-        print(f"[OSRM] Perfil '{profile}' falló, usando 'driving' como fallback")
+        logger.warning("fetch_osrm_route: perfil '%s' falló, usando 'driving' como fallback", profile)
         result = await _call_osrm(OSRM_SERVERS["driving"], start, end)
         if result:
             return result
 
+    logger.warning("fetch_osrm_route: todos los perfiles OSRM fallaron para modo '%s'", transport_mode)
     return None

@@ -5,6 +5,7 @@
 # Extrae y normaliza noticias de fuentes oficiales (CVC, DAGMA, Alcaldía, El País, etc.)
 # FILTRO ESTRICTO: Máximo 14 días de antigüedad para garantizar cero desinformación.
 # ===================================================
+import logging
 import time
 import re
 import urllib.request
@@ -13,6 +14,8 @@ import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # Caché en memoria
 _CACHE_TIMESTAMP: float = 0.0
@@ -126,7 +129,11 @@ def fetch_live_cali_news() -> List[Dict[str, Any]]:
 
                 try:
                     dt = parsedate_to_datetime(pub_date_elem.text)
-                except Exception:
+                except Exception as exc:
+                    logger.warning(
+                        "fetch_live_cali_news: descartando item con pubDate ilegible '%s' (%s): %s",
+                        pub_date_elem.text, raw_title, exc,
+                    )
                     continue
 
                 # FILTRO ESTRICTO DE FECHA: Descartar noticias de más de 14 días
@@ -175,8 +182,8 @@ def fetch_live_cali_news() -> List[Dict[str, Any]]:
                     "_dt": dt,
                 })
 
-    except Exception as e:
-        print(f"[EcoPulse NewsService] Advertencia al obtener RSS en vivo: {e}.")
+    except Exception as exc:
+        logger.warning("fetch_live_cali_news: fallback a caché/lista vacía — excepción obteniendo RSS: %s", exc)
 
     # ORDENAR ESTRICTAMENTE DE MÁS RECIENTE A MÁS ANTIGUA
     raw_items.sort(key=lambda x: x["_dt"], reverse=True)

@@ -10,10 +10,13 @@ Cuando ClickHouse tenga datos de conteo vehicular, se reemplaza
 estimate_traffic_level() por una consulta real.
 """
 
+import logging
 import math
 import httpx
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Tuple
+
+logger = logging.getLogger(__name__)
 
 # Zona horaria de Cali (UTC-5)
 CALI_TZ = timezone(timedelta(hours=-5))
@@ -77,8 +80,11 @@ async def _fetch_road_types_overpass(
             if resp.status_code == 200:
                 elements = resp.json().get("elements", [])
                 return [e.get("tags", {}).get("highway", "unclassified") for e in elements]
-    except Exception:
-        pass
+            logger.warning(
+                "_fetch_road_types_overpass: fallback a heurística por hora — Overpass respondió %s", resp.status_code
+            )
+    except Exception as exc:
+        logger.warning("_fetch_road_types_overpass: fallback a heurística por hora — excepción: %s", exc)
     return []  # fallback vacío → usa solo hora del día
 
 
