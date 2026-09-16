@@ -42,9 +42,6 @@ const QUICK_OPTIONS: QuickOption[] = [
 const generateId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const getRandomItem = <T,>(arr: T[]): T =>
-  arr[Math.floor(Math.random() * arr.length)];
-
 const formatTime = (date: Date): string =>
   date.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true });
 
@@ -166,9 +163,12 @@ const EcopulseChat = ({ onClose, currentPage = 'inicio', onAction, onNavigate }:
         res.aiActions.forEach(action => {
           if (action.type === 'navigate' && action.payload?.page && onNavigate) {
             onNavigate(action.payload.page);
+            return;
           }
           if (onAction) {
             onAction(action);
+          } else {
+            console.warn(`[EcoPulse Chat] ai_action sin manejar: "${action.type}"`, action);
           }
         });
       }
