@@ -9,6 +9,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Radio, TrendingDown, TrendingUp, Sparkles } from 'lucide-react';
 import { fetch24hTrends, fetchSeriePorSensor, type SeriePorSensorData } from '../../services/api';
 import { useAirQuality } from '../../hooks/useAirQuality';
+import { icaFromPm25 } from '../../utils/airQuality';
 
 
 type RangeOption = '24h' | 'pm25' | 'co2';
@@ -27,10 +28,14 @@ const METRIC_TABS: { id: RangeOption; label: string; unit: string }[] = [
   { id: 'co2',  label: 'CO₂',      unit: 'ppm' },
 ];
 
+/** Id corto y legible para identificar un sensor en leyenda/tooltip sin mostrar el id completo del hardware. */
+const shortSensorId = (id: string) => id.replace(/^D29(ESP32|TTGOT)/, '').slice(-6) || id;
+
 const TendenciaSemana = () => {
 
   const [selectedRange, setSelectedRange] = useState<RangeOption>('24h');
   const [hover, setHover] = useState<{ x: number; y: number; vGreen: number; vBlue: number; label: string } | null>(null);
+  const [hoveredSensorId, setHoveredSensorId] = useState<string | null>(null);
   const [fetchedTrend, setFetchedTrend] = useState<any | null>(null);
   const [sensorSerie, setSensorSerie] = useState<SeriePorSensorData | null>(null);
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -48,9 +53,12 @@ const TendenciaSemana = () => {
     return () => { active = false; };
   }, [selectedRange]);
 
-  // Fetch de series por sensor (solo en tab PM2.5) — auto-refresh cada 60s
+  // Fetch de series por sensor — real solo para PM2.5 (get_serie_por_sensor
+  // en el backend). El tab ICA reutiliza esta misma serie derivando el ICA
+  // de cada punto con icaFromPm25(); CO2 no tiene serie por sensor real, así
+  // que no se pide ahí.
   useEffect(() => {
-    if (selectedRange !== 'pm25') {
+    if (selectedRange === 'co2') {
       setSensorSerie(null);
       if (refreshRef.current) clearInterval(refreshRef.current);
       return;
@@ -135,29 +143,41 @@ const TendenciaSemana = () => {
     };
   }, [fetchedTrend, selectedRange, metrics]);
 
-  // Generador de spaghetti lines por estación individual para la vista actual
+  // Spaghetti lines por estación individual. get_serie_por_sensor solo trae
+  // PM2.5 real por sensor (no hay equivalente en el backend para ICA ni
+  // CO2) — antes esto se tapaba con un fallback que inventaba 6 líneas con
+  // nombres reales de barrios de Cali y ruido sinusoidal alrededor del
+  // promedio, presentadas como sensores reales. Ahora: PM2.5 muestra la
+  // serie real tal cual; ICA deriva cada punto de esa misma serie real con
+  // icaFromPm25() (misma fórmula EPA que usa el backend, sin inventar
+  // ningún dato nuevo); CO2 no tiene serie por sensor real, así que no se
+  // dibuja ninguna línea.
   const multiSensorLines = useMemo(() => {
-    if (sensorSerie && sensorSerie.sensors && sensorSerie.sensors.length > 0 && selectedRange === 'pm25') {
-      return sensorSerie.sensors;
+    if (!sensorSerie?.sensors?.length) return [];
+    if (selectedRange === 'pm25') return sensorSerie.sensors;
+    if (selectedRange === '24h') {
+      return sensorSerie.sensors.map(sensor => ({
+        ...sensor,
+        avg24h: icaFromPm25(sensor.avg24h),
+        points: sensor.points.map(p => ({ t: p.t, v: icaFromPm25(p.v) })),
+      }));
     }
-    // Si no hay respuesta del backend para la serie, sintetizamos 6 trazos de estaciones reales de Cali
-    // alrededor de la curva promedio actual para que el usuario siempre vea la dispersión de estaciones
-    const baseCurve = currentData.green;
-    const offsets = [-0.25, -0.15, -0.05, 0.08, 0.18, 0.28];
-    const stationNames = ['San Antonio', 'Pance', 'Flora', 'Aguablanca', 'Meléndez', 'Chipichape'];
-    
-    return offsets.map((factor, idx) => ({
-      id: `station_${idx}`,
-      name: stationNames[idx],
-      avg24h: Math.round(currentData.green[currentData.green.length - 1] * (1 + factor)),
-      points: baseCurve.map((v, i) => {
-        const noise = Math.sin(i * 1.5 + idx) * (v * 0.18);
-        const pointVal = Math.max(1, Math.round((v * (1 + factor) + noise) * 10) / 10);
-        return { t: currentData.labels[i], v: pointVal };
-      })
-    }));
-  }, [sensorSerie, selectedRange, currentData]);
+    return [];
+  }, [sensorSerie, selectedRange]);
 
+  // Datos del sensor resaltado por hover, para la etiqueta flotante y la leyenda.
+  const hoveredSensorInfo = useMemo(() => {
+    if (!hoveredSensorId) return null;
+    const idx = multiSensorLines.findIndex(s => s.id === hoveredSensorId);
+    if (idx === -1) return null;
+    const sensor = multiSensorLines[idx];
+    const lastPoint = sensor.points[sensor.points.length - 1];
+    return {
+      color: SENSOR_COLORS[idx % SENSOR_COLORS.length],
+      shortId: shortSensorId(sensor.id),
+      value: lastPoint?.v,
+    };
+  }, [hoveredSensorId, multiSensorLines]);
 
   const xLabels = currentData.labels;
   const currentVal = currentData.green[currentData.green.length - 1];
@@ -280,7 +300,15 @@ const TendenciaSemana = () => {
       </div>
 
       {/* ── SVG Gráfica de Onda Fluida ── */}
-      <div className="w-full relative cursor-crosshair my-2" onMouseLeave={() => setHover(null)}>
+      <div className="w-full relative cursor-crosshair my-2" onMouseLeave={() => { setHover(null); setHoveredSensorId(null); }}>
+        {hoveredSensorInfo && (
+          <div
+            className="absolute top-0 left-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#1A1A18] text-white text-[10px] font-bold shadow-lg pointer-events-none z-10"
+          >
+            <span className="w-2 h-2 rounded-full" style={{ background: hoveredSensorInfo.color }} />
+            Sensor {hoveredSensorInfo.shortId} · {hoveredSensorInfo.value} {currentData.unit}
+          </div>
+        )}
         <svg
           viewBox={`0 0 ${svgW} ${svgH}`}
           className="w-full h-auto overflow-visible"
@@ -320,7 +348,11 @@ const TendenciaSemana = () => {
           {/* Áreas rellenas y líneas */}
           <path d={areaGreen} fill="url(#glowAreaGreen)" clipPath="url(#chartClip24)" />
 
-          {/* ── Spaghetti: líneas individuales por sensor / estación ── */}
+          {/* ── Spaghetti: líneas individuales por sensor / estación ──
+               Al pasar el mouse por una línea, se resalta y se atenúan las
+               demás (si no, con ~10 líneas en tonos parecidos son ruido
+               indistinguible). Cada línea lleva un trazo invisible más
+               grueso encima solo para hacer el hover más fácil de disparar. */}
           {multiSensorLines.map((sensor, si) => {
             if (!sensor.points || sensor.points.length < 2) return null;
             const color = SENSOR_COLORS[si % SENSOR_COLORS.length];
@@ -332,17 +364,31 @@ const TendenciaSemana = () => {
               const cpx = (x1 - x0) * 0.45;
               d += ` C ${x0 + cpx} ${y0}, ${x1 - cpx} ${y1}, ${x1} ${y1}`;
             }
+            const isHovered = hoveredSensorId === sensor.id;
+            const isDimmed = hoveredSensorId !== null && !isHovered;
             return (
-              <path
-                key={sensor.id}
-                d={d}
-                fill="none"
-                stroke={color}
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                opacity="0.55"
-                clipPath="url(#chartClip24)"
-              />
+              <g key={sensor.id}>
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={isHovered ? 2.6 : 1.6}
+                  strokeLinecap="round"
+                  opacity={isDimmed ? 0.12 : isHovered ? 1 : 0.55}
+                  clipPath="url(#chartClip24)"
+                  style={{ transition: 'opacity 0.15s, stroke-width 0.15s' }}
+                />
+                {/* Hit area invisible más ancha, solo para facilitar el hover */}
+                <path
+                  d={d}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth="10"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredSensorId(sensor.id)}
+                  onMouseLeave={() => setHoveredSensorId(null)}
+                />
+              </g>
             );
           })}
 
@@ -404,23 +450,44 @@ const TendenciaSemana = () => {
             <span className="w-3.5 h-1 bg-[#2D6A4F] rounded-full block" />
             Promedio Red
           </span>
-          {multiSensorLines.length > 0 && (
-            <span className="flex items-center gap-1.5 text-[#4A8C6F]">
-              <span className="w-3.5 h-0.5 bg-[#4A8C6F] rounded-full block opacity-70" />
-              {multiSensorLines.length} estaciones
-            </span>
-          )}
           <span className="flex items-center gap-1.5 text-[#64748B]">
             <span className="w-3.5 h-0.5 border-b-2 border-dashed border-[#64748B] block" />
             {currentData.refLabel}
           </span>
-
         </div>
         <span className="text-[10px] text-[#2D6A4F] bg-[#E8F5EE] px-2.5 py-0.5 rounded-full flex items-center gap-1">
           <Radio size={10} className="animate-pulse" />
           Transmisión continua
         </span>
       </div>
+
+      {/* Chips por sensor: colores + id corto, para poder identificar cada
+          línea del spaghetti chart sin adivinar por el tono. Pasar el mouse
+          por un chip resalta su línea en el gráfico, y viceversa. */}
+      {multiSensorLines.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
+          {multiSensorLines.map((sensor, si) => {
+            const color = SENSOR_COLORS[si % SENSOR_COLORS.length];
+            const isHovered = hoveredSensorId === sensor.id;
+            return (
+              <button
+                key={sensor.id}
+                onMouseEnter={() => setHoveredSensorId(sensor.id)}
+                onMouseLeave={() => setHoveredSensorId(null)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer"
+                style={{
+                  background: isHovered ? `${color}20` : 'transparent',
+                  color: isHovered ? color : '#8C8C86',
+                  border: `1px solid ${isHovered ? color : '#DDD5C4'}`,
+                }}
+              >
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                {shortSensorId(sensor.id)}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
 
     </div>

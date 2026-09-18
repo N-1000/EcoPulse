@@ -8,6 +8,29 @@ import { getIcaLevel } from '../constants/ica';
 
 export { ICA_LEVELS, getIcaLevel } from '../constants/ica';
 
+// Breakpoints EPA / Resolución 2254 (C_low, C_high, I_low, I_high) — mismos
+// que backend/app/utils/ica.py. Única fórmula para derivar ICA desde PM2.5
+// en el frontend, para no reinventarla cada vez que hace falta.
+const PM25_BREAKPOINTS: readonly [number, number, number, number][] = [
+  [0.0, 12.0, 0, 50],
+  [12.1, 35.4, 51, 100],
+  [35.5, 55.4, 101, 150],
+  [55.5, 150.4, 151, 200],
+  [150.5, 250.4, 201, 300],
+  [250.5, 500.4, 301, 500],
+];
+
+/** Deriva el ICA a partir de una concentración de PM2.5 (µg/m³), interpolación lineal EPA. */
+export const icaFromPm25 = (pm25: number): number => {
+  if (pm25 == null || pm25 < 0) return 0;
+  for (const [cLow, cHigh, iLow, iHigh] of PM25_BREAKPOINTS) {
+    if (pm25 <= cHigh) {
+      return Math.round(((iHigh - iLow) / (cHigh - cLow)) * (pm25 - cLow) + iLow);
+    }
+  }
+  return 500;
+};
+
 /** Color HEX principal de cada nivel ICA. */
 export const levelColor = (level: AirQualityLevel | string): string => {
   const map: Record<string, string> = {
@@ -32,19 +55,6 @@ export const badgeClass = (level: AirQualityLevel | string): string => {
     'peligrosa':                'bg-red-200 text-red-900',
   };
   return map[level] ?? 'bg-gray-100 text-gray-700';
-};
-
-/** Etiqueta corta legible de cada nivel. */
-export const levelLabel = (level: AirQualityLevel | string): string => {
-  const map: Record<string, string> = {
-    'buena':                    'Buena',
-    'moderada':                 'Moderada',
-    'dañina-grupos-sensibles':  'D. G. Sensibles',
-    'dañina':                   'Dañina',
-    'muy-dañina':               'Muy Dañina',
-    'peligrosa':                'Peligrosa',
-  };
-  return map[level] ?? level;
 };
 
 /** Estandariza el cálculo de métricas visuales para clústeres de nodos en todos los mapas. */
