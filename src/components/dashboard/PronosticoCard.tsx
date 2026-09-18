@@ -19,11 +19,12 @@ import {
   Clock,
 } from 'lucide-react';
 import { useAirQuality } from '../../hooks/useAirQuality';
+import { useCurrentWeather } from '../../hooks/useCurrentWeather';
+import { projectIca } from '../../utils/icaForecast';
+import { mapWmoToWeather, degreesToCompass, type WeatherType } from '../../utils/weatherCode';
 
 const DAYS_OF_WEEK = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
-type WeatherType = 'sun' | 'rain' | 'drizzle' | 'cloud-sun' | 'cloud' | 'storm';
 
 interface DayForecastData {
   id: string;
@@ -50,20 +51,6 @@ interface DayForecastData {
   }>;
 }
 
-const mapWmoToWeather = (code: number): { weather: WeatherType; condition: string } => {
-  if (code === 0)                        return { weather: 'sun',       condition: 'Despejado y soleado' };
-  if (code <= 2)                         return { weather: 'cloud-sun', condition: 'Parcialmente nublado' };
-  if (code === 3)                        return { weather: 'cloud',     condition: 'Mayormente nublado' };
-  if (code >= 45 && code <= 48)          return { weather: 'cloud',     condition: 'Niebla en Farallones' };
-  if (code >= 51 && code <= 55)          return { weather: 'drizzle',   condition: 'Llovizna dispersa' };
-  if (code >= 56 && code <= 57)          return { weather: 'drizzle',   condition: 'Llovizna fría' };
-  if (code >= 61 && code <= 63)          return { weather: 'rain',      condition: 'Lluvia moderada' };
-  if (code === 65)                       return { weather: 'rain',      condition: 'Lluvia fuerte' };
-  if (code >= 80 && code <= 82)          return { weather: 'drizzle',   condition: 'Chubascos intermitentes' };
-  if (code >= 95 && code <= 99)          return { weather: 'storm',     condition: 'Tormenta eléctrica' };
-  return { weather: 'cloud-sun', condition: 'Parcialmente nublado' };
-};
-
 const getUvSeverity = (uv: number): { label: string; color: string } => {
   if (uv <= 2) return { label: 'Bajo', color: '#16A34A' };
   if (uv <= 5) return { label: 'Moderado', color: '#CA8A04' };
@@ -75,6 +62,7 @@ const getUvSeverity = (uv: number): { label: string; color: string } => {
 const PronosticoCard = () => {
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0);
   const { metrics } = useAirQuality();
+  const currentWind = useCurrentWeather();
   const [apiData, setApiData] = useState<any | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -130,7 +118,16 @@ const PronosticoCard = () => {
       const tMin = daily?.temperature_2m_min?.[offset] !== undefined
         ? Math.round(daily.temperature_2m_min[offset])
         : 19 + (offset % 2);
-      const wCode = daily?.weather_code?.[offset] ?? (offset === 0 ? 1 : 2);
+      // El código "resumen del día" de Open-Meteo toma el momento más
+      // severo de las 24h (ej. una llovizna de la tarde) y lo usa como
+      // titular del día completo, aunque el mediodía esté despejado.
+      // Se usa el código de una hora representativa en vez del resumen:
+      // la hora actual para "Hoy", el mediodía para los días futuros
+      // (todavía no tienen una "hora actual" propia).
+      const representativeHourIdx = offset === 0 ? today.getHours() : offset * 24 + 12;
+      const wCode = hourly?.weather_code?.[representativeHourIdx]
+        ?? daily?.weather_code?.[offset]
+        ?? (offset === 0 ? 1 : 2);
       const rainProb = daily?.precipitation_probability_max?.[offset] ?? (offset === 0 ? 35 : 45);
       const uv = daily?.uv_index_max?.[offset] ?? 7.5;
       const wind = daily?.wind_speed_10m_max?.[offset] ? Math.round(daily.wind_speed_10m_max[offset]) : 11;
@@ -138,14 +135,7 @@ const PronosticoCard = () => {
 
       const wInfo = mapWmoToWeather(wCode);
 
-      // Proyección física de ICA basada en clima:
-      // Lluvia > 50% lava partículas (-20%), viento > 14 km/h dispersa (-15%), calor estancado acumula (+15%)
-      let icaFactor = 1.0;
-      if (rainProb > 50) icaFactor -= 0.20;
-      else if (rainProb < 20 && uv > 8) icaFactor += 0.15;
-      if (wind > 13) icaFactor -= 0.10;
-
-      const projectedIca = Math.max(12, Math.round(currentIcaBase * (icaFactor + (offset * 0.04))));
+      const projectedIca = projectIca(currentIcaBase, { rainProbMax: rainProb, windSpeedMax: wind, uvIndexMax: uv }, offset);
       const icaLabel = projectedIca <= 50 ? 'Buena' : projectedIca <= 100 ? 'Moderada' : 'Dañina (Sensible)';
       const icaColor = projectedIca <= 50 ? '#2D6A4F' : projectedIca <= 100 ? '#D97706' : '#EA580C';
 
@@ -194,6 +184,12 @@ const PronosticoCard = () => {
 
   const activeDay = daysList[selectedDayIdx] || daysList[0];
   const uvInfo = getUvSeverity(activeDay.uvIndex);
+  // Antes del primer fetch, daysList ya devuelve 5 días con valores de
+  // reemplazo (28°C, 35% lluvia, etc.) para no romper el render — pero
+  // mostrarlos tal cual es un dato falso servido como real. Mientras
+  // apiData es null (nunca resolvió ni una vez), se muestra un skeleton
+  // en vez de esos números.
+  const isInitialLoading = apiData === null;
 
   const renderWeatherIcon = (type: WeatherType, size = 26) => {
     switch (type) {
@@ -241,6 +237,19 @@ const PronosticoCard = () => {
         </div>
       </div>
 
+      {isInitialLoading ? (
+        <div className="animate-pulse">
+          {/* ── Skeleton del carrusel de 5 días ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
+            {[0, 1, 2, 3, 4].map(i => (
+              <div key={i} className="rounded-2xl p-3.5 h-[148px] bg-[#F5F2EB] border border-[#E8E0D0]" />
+            ))}
+          </div>
+          {/* ── Skeleton del panel de detalle ── */}
+          <div className="rounded-2xl h-[260px] bg-[#F5F2EB] border border-[#E8E0D0]" />
+        </div>
+      ) : (
+        <>
       {/* ── Carrusel de 5 Días ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
         {daysList.map((d, idx) => {
@@ -371,7 +380,9 @@ const PronosticoCard = () => {
             </div>
             <div>
               <span className="text-[10px] font-bold text-[#8C8C86] uppercase block">Brisa de Cali</span>
-              <span className="text-sm font-black text-[#1A1A18]">Farallones / O</span>
+              <span className="text-sm font-black text-[#1A1A18]">
+                {currentWind.windDirection !== null ? degreesToCompass(currentWind.windDirection) : '—'}
+              </span>
             </div>
           </div>
         </div>
@@ -398,6 +409,8 @@ const PronosticoCard = () => {
         </div>
 
       </div>
+        </>
+      )}
 
     </div>
   );
