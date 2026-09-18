@@ -46,8 +46,8 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
           </div>
 
           <h1
-            className="text-4xl sm:text-6xl md:text-7xl font-bold text-white tracking-tight leading-[1.08] mb-4 select-none drop-shadow-2xl"
-            style={{ fontFamily: '"Playfair Display", Georgia, serif', textShadow: '0 4px 20px rgba(0,0,0,0.6)' }}
+            className="font-display text-4xl sm:text-6xl md:text-7xl font-bold text-white tracking-tight leading-[1.08] mb-4 select-none drop-shadow-2xl"
+            style={{ textShadow: '0 4px 20px rgba(0,0,0,0.6)' }}
           >
             Respira la ciudad con certeza.
           </h1>

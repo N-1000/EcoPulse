@@ -81,8 +81,7 @@ const HomePage = () => {
               Métricas en Tiempo Real
             </span>
             <h2
-              className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A1A18] tracking-tight mb-4"
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+              className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A1A18] tracking-tight mb-4"
             >
               El pulso del aire, segundo a segundo.
             </h2>
@@ -164,8 +163,7 @@ const HomePage = () => {
                 </div>
 
                 <h2
-                  className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white mb-6 leading-tight"
-                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                  className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white mb-6 leading-tight"
                 >
                   Muévete por Cali respirando el aire más puro.
                 </h2>
@@ -225,8 +223,7 @@ const HomePage = () => {
               Analítica Temporal
             </span>
             <h2
-              className="text-3xl sm:text-4xl font-bold text-[#1A1A18] tracking-tight mb-3"
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+              className="font-display text-3xl sm:text-4xl font-bold text-[#1A1A18] tracking-tight mb-3"
             >
               Comportamiento y Ciclos Atmosféricos
             </h2>
@@ -254,8 +251,7 @@ const HomePage = () => {
               Análisis Profundo
             </span>
             <h2
-              className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A1A18] tracking-tight mb-4"
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+              className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A1A18] tracking-tight mb-4"
             >
               La huella del tiempo y las personas.
             </h2>
@@ -284,8 +280,7 @@ const HomePage = () => {
               Territorio y Cobertura
             </span>
             <h2
-              className="text-3xl sm:text-4xl font-bold text-[#1A1A18] tracking-tight mb-3"
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+              className="font-display text-3xl sm:text-4xl font-bold text-[#1A1A18] tracking-tight mb-3"
             >
               Mapa Geoespacial de Estaciones
             </h2>
@@ -308,8 +303,7 @@ const HomePage = () => {
               Proyecciones Meteorológicas
             </span>
             <h2
-              className="text-3xl sm:text-4xl font-bold text-[#1A1A18] tracking-tight mb-3"
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+              className="font-display text-3xl sm:text-4xl font-bold text-[#1A1A18] tracking-tight mb-3"
             >
               Pronóstico Atmosférico
             </h2>

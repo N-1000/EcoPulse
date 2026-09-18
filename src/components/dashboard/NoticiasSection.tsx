@@ -87,8 +87,7 @@ const NoticiasSection = () => {
             Actualidad en Vivo
           </span>
           <h2
-            className="text-2xl sm:text-3xl font-bold text-[#1A1A18] tracking-tight"
-            style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+            className="font-display text-2xl sm:text-3xl font-bold text-[#1A1A18] tracking-tight"
           >
             Noticias y Gestión Ambiental de Cali
           </h2>
