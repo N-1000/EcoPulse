@@ -2,11 +2,13 @@
 // ECOPULSE 2026 - pages/MapPage.tsx  —  Light Mode + Ruta Saludable
 // ===================================================
 import { useMemo, useState, useEffect, useRef, Fragment } from 'react';
-import { CloudSun, Wind, Footprints } from 'lucide-react';
+import { Sun, CloudSun, Cloud, CloudRain, Zap, Wind, Footprints } from 'lucide-react';
 import { MapContainer, TileLayer, WMSTileLayer, Marker, Polyline, useMap, ZoomControl, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { useMapData } from '../hooks/useMapData';
+import { useCurrentWeather } from '../hooks/useCurrentWeather';
 import { getClusterMetrics } from '../utils/airQuality';
+import { mapWmoToWeather, type WeatherType } from '../utils/weatherCode';
 import { fetchGreenZones, fetchBestDestination, fetchHealthyRoute } from '../services/api';
 import type { NodeCluster, RoutePoint, RouteResult, TransportMode } from '../types';
 import { NodeDetailPanel } from '../components/map/NodeDetailPanel';
@@ -147,8 +149,18 @@ const MapEvents = ({ clickHandlerRef }: { clickHandlerRef: React.MutableRefObjec
 // --------------------------------------------------
 // Página principal del mapa
 // --------------------------------------------------
+const WEATHER_ICONS: Record<WeatherType, typeof Sun> = {
+  sun: Sun,
+  'cloud-sun': CloudSun,
+  cloud: Cloud,
+  drizzle: CloudRain,
+  rain: CloudRain,
+  storm: Zap,
+};
+
 const MapPage = () => {
   const { clusters, wind, wmsLayers, center: caliCenter, isLoading } = useMapData();
+  const weather = useCurrentWeather();
   const [selectedGeohash, setSelectedGeohash] = useState<string | null>(null);
 
   // Estados para el ruteo saludable
@@ -468,16 +480,20 @@ const MapPage = () => {
 
         {/* Panel superior izquierdo — controles y clima */}
         <div className="absolute top-4 left-4 z-[400] space-y-2">
-          {/* Tarjeta del clima */}
-          {!selectedCluster && !isRoutingMode && (
-            <div className="bg-white/90 backdrop-blur-md border border-gray-150 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-              <CloudSun size={22} className="text-yellow-500 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-black text-gray-800 leading-tight">27.8°C</p>
-                <p className="text-[10px] text-gray-400 font-bold">Parcialmente nublado</p>
+          {/* Tarjeta del clima — Open-Meteo real, no un valor fijo */}
+          {!selectedCluster && !isRoutingMode && weather.temperature !== null && (() => {
+            const { weather: type, condition } = mapWmoToWeather(weather.weatherCode ?? 1);
+            const WeatherIcon = WEATHER_ICONS[type];
+            return (
+              <div className="bg-white/90 backdrop-blur-md border border-gray-150 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+                <WeatherIcon size={22} className="text-yellow-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-black text-gray-800 leading-tight">{weather.temperature.toFixed(1)}°C</p>
+                  <p className="text-[10px] text-gray-400 font-bold">{condition}</p>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Botón de Ruteo Saludable */}
           <button 
