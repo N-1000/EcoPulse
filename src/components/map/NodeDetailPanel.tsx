@@ -2,12 +2,109 @@
 // ECOPULSE 2026 - components/map/NodeDetailPanel.tsx
 // Panel flotante de detalle del nodo seleccionado en el mapa
 // ===================================================
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Activity, Droplets, Footprints, History, LineChart, MapPin, Thermometer, Wind, X
 } from 'lucide-react';
-import { levelColor } from '../../utils/airQuality';
+import { levelColor, getIcaLevel } from '../../utils/airQuality';
+import { projectIca } from '../../utils/icaForecast';
+import { fetchSeriePorSensor, type SeriePorSensorData, type SensorSerie } from '../../services/api';
 import type { NodeCluster, TangaraNode } from '../../types';
+
+const CALI_LAT = 3.4516;
+const CALI_LNG = -76.5320;
+const DAYS_OF_WEEK = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+interface DailyForecast {
+  time: string[];
+  precipitation_probability_max: number[];
+  wind_speed_10m_max: number[];
+  uv_index_max: number[];
+}
+
+const fetchDailyForecast = (): Promise<DailyForecast | null> =>
+  fetch(
+    'https://api.open-meteo.com/v1/forecast' +
+    `?latitude=${CALI_LAT}&longitude=${CALI_LNG}` +
+    '&daily=precipitation_probability_max,wind_speed_10m_max,uv_index_max' +
+    '&timezone=America%2FBogota'
+  )
+    .then(res => (res.ok ? res.json() : null))
+    .then(data => data?.daily ?? null)
+    .catch(() => null);
+
+const NodeForecastRows = ({ node }: { node: TangaraNode }) => {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [daily, setDaily] = useState<DailyForecast | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchDailyForecast().then(res => {
+      if (!active) return;
+      if (res) { setDaily(res); setStatus('loaded'); } else { setStatus('error'); }
+    });
+    return () => { active = false; };
+  }, []);
+
+  if (status === 'loading') return <div className="text-[10px] text-gray-400 text-center py-3 animate-pulse">Cargando proyección…</div>;
+  if (status === 'error' || !daily) return <div className="text-[10px] text-gray-400 text-center py-3">No se pudo cargar la proyección. Intentá de nuevo más tarde.</div>;
+
+  const baseIca = node.measurements.ica > 0 ? node.measurements.ica : 22;
+
+  return (
+    <div>
+      <div className="space-y-1.5">
+        {[1, 2, 3].map(offset => {
+          const dateStr = daily.time[offset];
+          const d = dateStr ? new Date(dateStr) : null;
+          const dayLabel = offset === 1 ? 'Mañana' : d ? DAYS_OF_WEEK[d.getDay()] : `+${offset}d`;
+          const factors = {
+            rainProbMax: daily.precipitation_probability_max[offset] ?? 45,
+            windSpeedMax: daily.wind_speed_10m_max[offset] ?? 11,
+            uvIndexMax: daily.uv_index_max[offset] ?? 7.5,
+          };
+          const projected = projectIca(baseIca, factors, offset);
+          const level = getIcaLevel(projected);
+          return (
+            <div key={offset} className="flex items-center justify-between text-[10px]">
+              <span className="font-bold text-gray-500 w-16">{dayLabel}</span>
+              <span className="font-black text-[13px]" style={{ color: level.color }}>{projected}</span>
+              <span className="font-semibold" style={{ color: level.color }}>{level.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[8px] text-gray-400 mt-2 leading-tight">
+        Estimación por fórmula a partir del clima (Open-Meteo), no un modelo de IA.
+      </p>
+    </div>
+  );
+};
+
+const HistorySparkline = ({ serie, refValue, refLabel, unit }: {
+  serie: SensorSerie; refValue: number; refLabel: string; unit: string;
+}) => {
+  const values = serie.points.map(p => p.v);
+  const w = 249, h = 60, pad = 4;
+  const maxVal = Math.max(...values, refValue * 1.15, 1);
+  const stepX = values.length > 1 ? (w - pad * 2) / (values.length - 1) : 0;
+  const toY = (v: number) => h - pad - (Math.max(v, 0) / maxVal) * (h - pad * 2);
+  const pathD = values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${(pad + i * stepX).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
+  const refY = toY(refValue);
+
+  return (
+    <div>
+      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+        <line x1={pad} y1={refY} x2={w - pad} y2={refY} stroke="#CBD5C4" strokeWidth="1" strokeDasharray="3 3" />
+        <path d={pathD} fill="none" stroke="#4A8C6F" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+      <div className="flex items-center justify-between mt-1 text-[9px] text-gray-400">
+        <span>Prom. 24h: <b className="text-gray-600">{serie.avg24h} {unit}</b></span>
+        <span className="truncate ml-2">{refLabel}</span>
+      </div>
+    </div>
+  );
+};
 
 interface NodeDetailPanelProps {
   cluster: NodeCluster;
@@ -20,6 +117,34 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
   const node: TangaraNode = cluster.nodes.find(n => n.id === activeNodeId) ?? cluster.nodes[0];
   const color = levelColor(node.measurements.level);
   const isMulti = cluster.nodes.length > 1;
+
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyData, setHistoryData] = useState<SeriePorSensorData | null>(null);
+  const [historyStatus, setHistoryStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const [showForecast, setShowForecast] = useState(false);
+
+  const toggleHistory = () => {
+    setShowForecast(false);
+    if (showHistory) { setShowHistory(false); return; }
+    setShowHistory(true);
+    if (historyStatus === 'idle') {
+      setHistoryStatus('loading');
+      fetchSeriePorSensor()
+        .then(res => {
+          if (!res) { setHistoryStatus('error'); return; }
+          setHistoryData(res);
+          setHistoryStatus('loaded');
+        })
+        .catch(() => setHistoryStatus('error'));
+    }
+  };
+
+  const toggleForecast = () => {
+    setShowHistory(false);
+    setShowForecast(prev => !prev);
+  };
+
+  const nodeSerie = historyData?.sensors.find(s => s.id === node.id) ?? null;
 
   const statusInfo: Record<TangaraNode['status'], { label: string; dot: string }> = {
     activo:      { label: 'Activo',         dot: '#22C55E' },
@@ -161,41 +286,84 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
           { icon: History,    label: 'Histórico' },
           { icon: LineChart,  label: 'Predicción' },
           { icon: Footprints, label: 'Ruta sana' },
-        ].map(action => (
-          <button
-            key={action.label}
-            onClick={() => {
-              if (action.label === 'Ruta sana') {
-                if (node.coordinates) {
-                  onStartHealthyRoute([node.coordinates.lat, node.coordinates.lng]);
+        ].map(action => {
+          const isActive = (action.label === 'Histórico' && showHistory) || (action.label === 'Predicción' && showForecast);
+          return (
+            <button
+              key={action.label}
+              onClick={() => {
+                if (action.label === 'Ruta sana') {
+                  if (node.coordinates) {
+                    onStartHealthyRoute([node.coordinates.lat, node.coordinates.lng]);
+                  }
+                } else if (action.label === 'Histórico') {
+                  toggleHistory();
+                } else if (action.label === 'Predicción') {
+                  toggleForecast();
                 }
-              }
-            }}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
-              padding: '8px 4px', borderRadius: '10px',
-              background: 'rgba(0,0,0,0.03)',
-              border: '1px solid rgba(0,0,0,0.04)',
-              color: '#4B5563',
-              fontSize: '9px', fontWeight: 700, letterSpacing: '0.02em',
-              transition: 'all 0.15s',
-            }}
-            onMouseOver={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = `${color}15`;
-              (e.currentTarget as HTMLButtonElement).style.borderColor = `${color}40`;
-              (e.currentTarget as HTMLButtonElement).style.color = color;
-            }}
-            onMouseOut={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.03)';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.04)';
-              (e.currentTarget as HTMLButtonElement).style.color = '#4B5563';
-            }}
-          >
-            <action.icon size={13} />
-            {action.label}
-          </button>
-        ))}
+              }}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
+                padding: '8px 4px', borderRadius: '10px',
+                background: isActive ? `${color}15` : 'rgba(0,0,0,0.03)',
+                border: `1px solid ${isActive ? `${color}40` : 'rgba(0,0,0,0.04)'}`,
+                color: isActive ? color : '#4B5563',
+                fontSize: '9px', fontWeight: 700, letterSpacing: '0.02em',
+                transition: 'all 0.15s',
+              }}
+              onMouseOver={e => {
+                if (isActive) return;
+                (e.currentTarget as HTMLButtonElement).style.background = `${color}15`;
+                (e.currentTarget as HTMLButtonElement).style.borderColor = `${color}40`;
+                (e.currentTarget as HTMLButtonElement).style.color = color;
+              }}
+              onMouseOut={e => {
+                if (isActive) return;
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.03)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.04)';
+                (e.currentTarget as HTMLButtonElement).style.color = '#4B5563';
+              }}
+            >
+              <action.icon size={13} />
+              {action.label}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Histórico 24h del nodo (PM2.5, serie real por sensor) */}
+      {showHistory && (
+        <div style={{ padding: '0 18px 14px' }}>
+          {historyStatus === 'loading' && (
+            <div className="text-[10px] text-gray-400 text-center py-3 animate-pulse">Cargando histórico…</div>
+          )}
+          {historyStatus === 'error' && (
+            <div className="text-[10px] text-gray-400 text-center py-3">
+              No se pudo cargar el histórico. Intentá de nuevo más tarde.
+            </div>
+          )}
+          {historyStatus === 'loaded' && !nodeSerie && (
+            <div className="text-[10px] text-gray-400 text-center py-3">
+              Este nodo no tuvo suficientes lecturas en las últimas 24h para mostrar histórico.
+            </div>
+          )}
+          {historyStatus === 'loaded' && nodeSerie && historyData && (
+            <HistorySparkline
+              serie={nodeSerie}
+              refValue={historyData.refValue}
+              refLabel={historyData.refLabel}
+              unit={historyData.unit}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Predicción por nodo (proyección por fórmula climática, no ML) */}
+      {showForecast && (
+        <div style={{ padding: '0 18px 14px' }}>
+          <NodeForecastRows node={node} />
+        </div>
+      )}
     </div>
   );
 };
