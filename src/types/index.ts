@@ -167,10 +167,6 @@ export type PageId =
   | 'calidad-aire'
   | 'tendencias'
   | 'predicciones'
-  | 'estadisticas'
-  | 'reportes'
-  | 'educacion'
-  | 'participa'
   | 'noticias'
   | 'sobre';
 

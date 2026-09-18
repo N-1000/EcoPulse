@@ -1,6 +1,6 @@
 // ===================================================
 // ECOPULSE 2026 - components/layout/Layout.tsx
-// Cascade única: TopBar sticky + HomePage en scroll continuo.
+// Cascade única: HomePage en scroll continuo, navegación por anclas.
 // ===================================================
 import { useState } from 'react';
 import FooterBar from './FooterBar';
