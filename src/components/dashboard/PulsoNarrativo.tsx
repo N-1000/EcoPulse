@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { useNodes } from '../../hooks/useNodes';
 import { calculateNodeMetrics } from '../../utils/nodeMetrics';
+import { useCurrentWeather } from '../../hooks/useCurrentWeather';
 import { getIcaLevel } from '../../utils/airQuality';
 
 function getCause(ica: number, hour: number): string {
@@ -28,11 +29,15 @@ function getTrend(hour: number): { label: string; color: string } {
 const PulsoNarrativo = () => {
   const { nodes, isLoading } = useNodes();
   const metrics = useMemo(() => calculateNodeMetrics(nodes), [nodes]);
+  const weather = useCurrentWeather();
 
   const ica   = metrics.icaGeneral;
   const pm25  = metrics.contaminants.find(c => c.id === 'pm25')?.value ?? 0;
-  const temp  = metrics.contaminants.find(c => c.id === 'tmp')?.value  ?? 0;
-  const hum   = metrics.contaminants.find(c => c.id === 'hum')?.value  ?? 0;
+  // Temperatura de Open-Meteo, no del promedio de sensores (autocalentamiento
+  // del gabinete en la mayoría de los nodos, ver useCurrentWeather).
+  const temp  = weather.temperature ?? 0;
+  // Humedad de Open-Meteo, mismo motivo que la temperatura.
+  const hum   = weather.humidity ?? 0;
   const level = getIcaLevel(ica);
   const hour  = new Date().getHours();
   const cause = getCause(ica, hour);
@@ -71,8 +76,7 @@ const PulsoNarrativo = () => {
 
       {/* Línea 1: ICA y nivel */}
       <p
-        className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-[1.1] tracking-tight text-[#1A1A18]"
-        style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+        className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-[1.1] tracking-tight text-[#1A1A18]"
       >
         {count > 0 && (
           <span className="text-[#8C8C86] font-normal">{count} sensores. </span>
@@ -85,8 +89,7 @@ const PulsoNarrativo = () => {
 
       {/* Línea 2: Tendencia (mismo margen izquierdo, tamaño menor) */}
       <p
-        className="text-2xl sm:text-3xl md:text-4xl font-black leading-[1.1] tracking-tight mb-12"
-        style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+        className="font-display text-2xl sm:text-3xl md:text-4xl font-black leading-[1.1] tracking-tight mb-12"
       >
         <span className="text-[#8C8C86] font-normal">Tendencia </span>
         <span style={{ color: trend.color }}>{trend.label}</span>

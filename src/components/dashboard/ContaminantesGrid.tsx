@@ -1,4 +1,5 @@
 import { useAirQuality } from '../../hooks/useAirQuality';
+import { useCurrentWeather } from '../../hooks/useCurrentWeather';
 import { ScrollReveal } from '../common/ScrollReveal';
 
 const WavyTrend = ({ trend, color }: { trend: 'up' | 'down' | 'stable'; color: string }) => {
@@ -51,6 +52,7 @@ const RingGauge = ({ value, max = 100, color }: { value: number; max?: number; c
 
 const ContaminantesGrid = () => {
   const { metrics } = useAirQuality();
+  const weather = useCurrentWeather();
 
   const getMetricVal = (id: string) => {
     const found = metrics.contaminants?.find(c => c.id === id);
@@ -100,9 +102,14 @@ const ContaminantesGrid = () => {
     // Arriba Derecha: entra desde arriba
     { id: 'co2',  name: 'CO₂ (Dióxido)',   value: getMetricVal('co2'),  max: 1000, unit: 'ppm',   color: '#537A8C', trend: 'stable' as const, direction: 'down' as const, delay: 100 },
     // Abajo Izquierda: entra desde abajo
-    { id: 'tmp',  name: 'Temperatura',      value: getMetricVal('tmp'),  max: 45, unit: '°C',    color: '#D07C60', trend: 'up' as const, direction: 'up' as const, delay: 150 },
+    // Temperatura viene de Open-Meteo, no de los sensores Tangara: la mayoría
+    // reporta autocalentamiento del gabinete (36-41°C), ver useCurrentWeather.
+    { id: 'tmp',  name: 'Temperatura',      value: weather.temperature ?? 0,  max: 45, unit: '°C',    color: '#D07C60', trend: 'up' as const, direction: 'up' as const, delay: 150 },
     // Abajo Derecha: entra desde la derecha
-    { id: 'hum',  name: 'Humedad',          value: getMetricVal('hum'),  max: 100, unit: '%',     color: '#4B6B7C', trend: 'stable' as const, direction: 'left' as const, delay: 200 },
+    // Humedad viene de Open-Meteo, mismo motivo que la temperatura: el
+    // autocalentamiento del gabinete también baja la humedad relativa
+    // medida por los sensores Tangara.
+    { id: 'hum',  name: 'Humedad',          value: weather.humidity ?? 0,  max: 100, unit: '%',     color: '#4B6B7C', trend: 'stable' as const, direction: 'left' as const, delay: 200 },
   ];
 
 
