@@ -38,8 +38,8 @@ const DAILY_SLOTS: TimeSlot[] = [
     title: 'Dispersión nocturna y descanso',
     atmosphereCause: 'El mínimo flujo vehicular y la estabilidad térmica nocturna mantienen el PM₂.₅ en rangos estables (~10.3 µg/m³).',
     outdoorSport: {
-      status: 'Atletas (5 AM)',
-      detail: 'Apto para corredores y ciclistas madrugadores antes de que inicie el flujo vehicular.',
+      status: 'Solo madrugadores',
+      detail: 'La mayoría de este horario es de descanso. El aire es bueno para quien ya esté despierto o entrene justo antes del amanecer (5-6 AM), pero no es una ventana pensada para el común de la gente.',
       good: true,
     },
     vulnerableGroups: {
@@ -150,8 +150,8 @@ const DAILY_SLOTS: TimeSlot[] = [
     title: 'Llegada de la brisa fresca del Pacífico',
     atmosphereCause: 'Disminución del tráfico y entrada de corrientes frescas desde la cordillera occidental a través del cañón del río Cali, limpiando la ciudad.',
     outdoorSport: {
-      status: 'Óptimo nocturno',
-      detail: 'Excelente momento para caminatas, trote o pasear mascotas con la brisa fresca de los Farallones.',
+      status: 'Bueno hasta 10 PM',
+      detail: 'Ideal para caminatas, trote o pasear mascotas con la brisa fresca de los Farallones entre 8:30 y 10 PM. Pasada esa hora ya es horario de descanso para la mayoría.',
       good: true,
     },
     vulnerableGroups: {
@@ -209,8 +209,7 @@ const HeatmapHoras = () => {
             Guía Horaria de Cali
           </span>
           <h3
-            className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1A1A18] tracking-tight"
-            style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+            className="font-display text-2xl sm:text-3xl md:text-4xl font-black text-[#1A1A18] tracking-tight"
           >
             ¿A qué hora es mejor salir en Cali?
           </h3>
@@ -305,8 +304,7 @@ const HeatmapHoras = () => {
                 )}
               </div>
               <h4
-                className="text-xl sm:text-2xl font-bold text-[#1A1A18]"
-                style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                className="font-display text-xl sm:text-2xl font-bold text-[#1A1A18]"
               >
                 {selectedSlot.title}
               </h4>

@@ -170,6 +170,21 @@ const SaludPerfiles = () => {
   const ica = metrics.icaGeneral || 35;
   const levelInfo = getIcaLevel(ica);
 
+  // Mismo criterio que HeatmapHoras: 22:00-04:59 es horario de descanso para
+  // la mayoría. El ICA "Buena"/"Moderada" a esa hora sigue siendo un aire
+  // real y sano, pero la salvedad NO es la misma para los tres grupos:
+  // "turno nocturno / madrugador" es una excepción real para un adulto,
+  // no para un niño (a esa edad dormir bien importa más que el aire) ni
+  // para un adulto mayor (salir de noche no compensa interrumpir el sueño).
+  const currentHour = new Date().getHours();
+  const isRestHours = currentHour >= 22 || currentHour < 5;
+  const recommendsOutdoor = levelInfo.level === 'buena' || levelInfo.level === 'moderada';
+  const REST_HOURS_NOTES: Record<string, string> = {
+    ninos: ' A esta hora, lo más sano para un niño es dormir bien: la calidad del sueño importa más que la actividad al aire libre, sin importar qué tan buena esté el aire.',
+    adultos: ' A esta hora la mayoría está descansando — esto vale sobre todo para quien ya esté despierto (turno nocturno, madrugador).',
+    mayores: ' A esta hora lo recomendable es descansar; salir de noche no aporta un beneficio que compense interrumpir el sueño a esta edad.',
+  };
+
   return (
     <div className="w-full">
       {/* Header */}
@@ -179,8 +194,7 @@ const SaludPerfiles = () => {
             Impacto en la Salud
           </span>
           <h3
-            className="text-2xl sm:text-3xl font-black text-[#1A1A18]"
-            style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+            className="font-display text-2xl sm:text-3xl font-black text-[#1A1A18]"
           >
             ¿Quién puede salir hoy?
           </h3>
@@ -202,6 +216,7 @@ const SaludPerfiles = () => {
         {PROFILES.map(profile => {
           const currentRisk = profile.risks[levelInfo.level as AirQualityLevel] || profile.risks['buena'];
           const Icon = profile.Icon;
+          const restHoursNote = isRestHours && recommendsOutdoor ? REST_HOURS_NOTES[profile.id] : '';
 
           return (
             <div
@@ -245,6 +260,7 @@ const SaludPerfiles = () => {
                   {/* Recomendación Médica Específica */}
                   <p className="text-xs sm:text-sm text-[#4A4A46] leading-relaxed flex-1">
                     {currentRisk.rec}
+                    {restHoursNote && <span className="text-[#8C8C86]">{restHoursNote}</span>}
                   </p>
 
                 </div>
