@@ -131,6 +131,12 @@ const HistoricoMensual = () => {
     return [...measuredMonths].sort((a, b) => (a.ica ?? 999) - (b.ica ?? 999))[0];
   }, [measuredMonths]);
 
+  const avgColorInfo = getIcaColor(avg);
+  // Mientras no llegó la primera respuesta real para el año seleccionado,
+  // `data` cae al fallback CALIBRATED_YEARS — datos de referencia, no en
+  // vivo. Mostrarlos sin distinguirlos del dato real es lo mismo que ya
+  // se corrigió en PronosticoCard: se muestra un skeleton en su lugar.
+  const isInitialLoading = !dataByYear[year];
   const maxVal = 100;
   const svgW = 600;
   const svgH = 210;
@@ -182,6 +188,11 @@ const HistoricoMensual = () => {
         </div>
 
         {/* ── KPIs Grandes de Resumen Anual ── */}
+        {isInitialLoading ? (
+          <div className="grid grid-cols-3 gap-3 p-3.5 bg-[#FAF7F2] rounded-2xl border border-[#E8E0D0] mb-5 animate-pulse">
+            {[0, 1, 2].map(i => <div key={i} className="h-9 bg-[#E8E0D0] rounded-lg" />)}
+          </div>
+        ) : (
         <div className="grid grid-cols-3 gap-3 p-3.5 bg-[#FAF7F2] rounded-2xl border border-[#E8E0D0] mb-5">
           <div>
             <span className="text-[10px] font-bold text-[#8C8C86] uppercase tracking-wider block mb-0.5">Promedio ICA</span>
@@ -189,7 +200,7 @@ const HistoricoMensual = () => {
               <span className="text-2xl sm:text-3xl font-black text-[#1A1A18] tracking-tight">
                 {avg}
               </span>
-              <span className="text-xs font-bold text-[#2D6A4F]">Buena</span>
+              <span className="text-xs font-bold" style={{ color: avgColorInfo.textColor }}>{avgColorInfo.label}</span>
             </div>
           </div>
 
@@ -197,8 +208,8 @@ const HistoricoMensual = () => {
             <span className="text-[10px] font-bold text-[#8C8C86] uppercase tracking-wider block mb-0.5">Mes Más Limpio</span>
             <div className="flex items-baseline gap-1 text-[#2D6A4F]">
               <Award size={13} className="stroke-[2.5]" />
-              <span className="text-lg sm:text-xl font-black">{bestMonth?.shortMonth || 'Ago'}</span>
-              <span className="text-[10px] font-bold opacity-80">(ICA {bestMonth?.ica || 20})</span>
+              <span className="text-lg sm:text-xl font-black">{bestMonth?.shortMonth ?? '—'}</span>
+              <span className="text-[10px] font-bold opacity-80">{bestMonth ? `(ICA ${bestMonth.ica})` : ''}</span>
             </div>
           </div>
 
@@ -211,8 +222,13 @@ const HistoricoMensual = () => {
             </div>
           </div>
         </div>
+        )}
       </div>
 
+      {isInitialLoading ? (
+        <div className="w-full h-[210px] my-2 rounded-2xl bg-[#FAF7F2] border border-[#E8E0D0] animate-pulse" />
+      ) : (
+        <>
       {/* ── SVG Histograma de Barras Estilizadas ── */}
       <div className="w-full relative cursor-pointer my-2" onMouseLeave={() => setHoveredIdx(null)}>
         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto overflow-visible">
@@ -368,6 +384,8 @@ const HistoricoMensual = () => {
           {measuredMonths.length} meses registrados
         </span>
       </div>
+        </>
+      )}
 
     </div>
   );
