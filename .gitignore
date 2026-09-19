@@ -45,4 +45,8 @@ node-v*-win-x64/
 # Secrets / credentials
 other/env
 
+# Datos locales con PII (comentarios scrapeados con nombre real del autor,
+# corpus de prueba para frases canónicas de MuadDib) -- nunca versionar.
+datos/
+
 
