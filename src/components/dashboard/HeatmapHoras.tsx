@@ -3,11 +3,12 @@
 // Ciclo Diario del Aire en Santiago de Cali
 // Formato 100% AM / PM (sin hora militar) y diagnóstico integral
 // ===================================================
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Clock, Sun, Moon, Wind, Car, Sparkles, Activity, Baby, Home } from 'lucide-react';
 import { useNodes } from '../../hooks/useNodes';
 import { calculateNodeMetrics } from '../../utils/nodeMetrics';
 import { getIcaLevel } from '../../utils/airQuality';
+import { fetchHourlyPattern, type HourlyPatternPoint } from '../../services/api';
 
 interface TimeSlot {
   id: string;
@@ -16,7 +17,6 @@ interface TimeSlot {
   hourStart: number;
   hourEnd: number;
   icon: React.ElementType;
-  baseIca: number;
   title: string;
   atmosphereCause: string;
   outdoorSport: { status: string; detail: string; good: boolean };
@@ -34,9 +34,8 @@ const DAILY_SLOTS: TimeSlot[] = [
     hourStart: 0,
     hourEnd: 5,
     icon: Moon,
-    baseIca: 44,
     title: 'Dispersión nocturna y descanso',
-    atmosphereCause: 'El mínimo flujo vehicular y la estabilidad térmica nocturna mantienen el PM₂.₅ en rangos estables (~10.3 µg/m³).',
+    atmosphereCause: 'La estabilidad térmica nocturna mantiene el PM₂.₅ en rangos estables (~10 µg/m³); el mínimo flujo vehicular a esta hora es un factor secundario, no el principal.',
     outdoorSport: {
       status: 'Solo madrugadores',
       detail: 'La mayoría de este horario es de descanso. El aire es bueno para quien ya esté despierto o entrene justo antes del amanecer (5-6 AM), pero no es una ventana pensada para el común de la gente.',
@@ -62,9 +61,8 @@ const DAILY_SLOTS: TimeSlot[] = [
     hourStart: 6,
     hourEnd: 8,
     icon: Car,
-    baseIca: 56,
     title: 'Pico de emisiones e inversión matutina',
-    atmosphereCause: 'Pico matutino de Cali: confluencia del tráfico escolar/laboral (Calle 5ta, Autopista Sur, Cra 1) con inversión térmica que atrapa gases a nivel de calle.',
+    atmosphereCause: 'Pico matutino de Cali: la inversión térmica atrapa los gases a nivel de calle en las horas frías previas al amanecer. El tráfico (Calle 5ta, Autopista Sur, Cra 1) contribuye, pero el histórico real mide este pico casi igual de fuerte sábado y domingo -- días con mucho menos tráfico laboral/escolar -- lo que indica que el clima pesa más que el volumen vehicular en la forma de este ciclo.',
     outdoorSport: {
       status: 'Evitar vías',
       detail: 'Evita trotar o pedalear junto a vías con alto flujo vehicular. Prefiere parques cerrados o posponer para después de las 9:00 AM.',
@@ -90,7 +88,6 @@ const DAILY_SLOTS: TimeSlot[] = [
     hourStart: 9,
     hourEnd: 16,
     icon: Sun,
-    baseIca: 40,
     title: 'Convección solar y dilución de partículas',
     atmosphereCause: 'El fuerte calentamiento solar del valle eleva las temperaturas hasta 33°C, generando corrientes térmicas que diluyen la concentración de partículas.',
     outdoorSport: {
@@ -113,28 +110,32 @@ const DAILY_SLOTS: TimeSlot[] = [
   },
   {
     id: 'pico_tarde',
-    label: 'Pico Tarde y Noche',
+    label: 'Tarde y Anochecer',
     timeRange: '5:00 PM – 8:29 PM',
     hourStart: 17,
     hourEnd: 20,
-    icon: Car,
-    baseIca: 64,
-    title: 'Pico vehicular de retorno y congestión',
-    atmosphereCause: 'Intenso flujo de salida laboral en las principales arterias de Cali (Calle 5ta, Autopista Suroriental, Av. Simón Bolívar). Al caer el sol disminuye la convección térmica, concentrando las emisiones de los vehículos.',
+    icon: Wind,
+    title: 'La franja más limpia del día',
+    // Corregido 2026-09-20: el texto original describía esta franja como el
+    // peor momento del día ("pico vehicular de retorno"). El histórico real
+    // de la red Tángara mide lo contrario -- es en promedio la franja MÁS
+    // limpia de las 24h, por debajo incluso de la madrugada. Hay tráfico de
+    // salida laboral real, pero no se traduce en el peor PM2.5 del día.
+    atmosphereCause: 'A pesar del tráfico de salida laboral, el histórico real de la red Tángara mide esta franja como la más limpia del día -- probablemente por la brisa que empieza a bajar desde la cordillera occidental antes del anochecer (el mismo efecto que sigue limpiando el aire en la noche).',
     outdoorSport: {
-      status: 'Rutas verdes',
-      detail: 'Evita ciclorrutas congestionadas junto a escapes de autos y motos. Prefiere el Bulevar del Río o zonas altas.',
-      good: false,
+      status: 'Buen momento',
+      detail: 'El aire medido en esta franja suele ser el mejor del día. Buena ventana para salir a caminar, trotar o pedalear.',
+      good: true,
     },
     vulnerableGroups: {
-      status: 'Regreso a casa',
-      detail: 'Hora pico de retorno. Niños y personas con asma deben evitar exposición prolongada junto a trancones vehiculares.',
-      good: false,
+      status: 'Ventana favorable',
+      detail: 'Buen momento para que niños y adultos mayores salgan un rato, dentro de lo razonable para la hora.',
+      good: true,
     },
     homeVentilation: {
-      status: 'Controlar',
-      detail: 'Cerrar ventanas hacia la calle si hay trancón afuera.',
-      good: false,
+      status: 'Ventilar',
+      detail: 'Buen momento para renovar el aire de la casa.',
+      good: true,
     },
     tempEst: '27°C – 29°C',
     windEst: '7 – 12 km/h',
@@ -146,7 +147,6 @@ const DAILY_SLOTS: TimeSlot[] = [
     hourStart: 21,
     hourEnd: 23,
     icon: Wind,
-    baseIca: 38,
     title: 'Llegada de la brisa fresca del Pacífico',
     atmosphereCause: 'Disminución del tráfico y entrada de corrientes frescas desde la cordillera occidental a través del cañón del río Cali, limpiando la ciudad.',
     outdoorSport: {
@@ -175,6 +175,14 @@ const HeatmapHoras = () => {
   const currentIca = metrics.icaGeneral || 35;
   const currentHour = new Date().getHours();
 
+  // Promedio real de PM2.5/ICA por hora del día, calculado por el backend
+  // sobre todo el histórico de la red Tángara (ver hallazgo 2026-09-20:
+  // reemplaza el baseIca hardcodeado que no estaba calibrado contra nada).
+  const [hourlyPattern, setHourlyPattern] = useState<HourlyPatternPoint[]>([]);
+  useEffect(() => {
+    fetchHourlyPattern().then(setHourlyPattern);
+  }, []);
+
   // Franja horaria activa en el reloj real
   const currentSlotIndex = DAILY_SLOTS.findIndex(
     s => currentHour >= s.hourStart && currentHour <= s.hourEnd
@@ -186,13 +194,15 @@ const HeatmapHoras = () => {
 
   const selectedSlot = DAILY_SLOTS.find(s => s.id === selectedSlotId) || DAILY_SLOTS[0];
 
-  // Base histórica de la franja actual para calcular la variación relativa
-  const currentSlotBase = DAILY_SLOTS[currentSlotIndex >= 0 ? currentSlotIndex : 0]?.baseIca || 44;
-
-  // Si es la franja de este momento, el ICA es EXACTAMENTE el medido en tiempo real por los sensores
+  // Si es la franja de este momento, el ICA es EXACTAMENTE el medido en tiempo
+  // real por los sensores. Para el resto, el promedio histórico real de esas
+  // horas (nada de escalar un número inventado por la proporción del actual).
   const getSlotIca = (slot: TimeSlot) => {
     if (slot.id === activeCurrentId) return currentIca;
-    return Math.round(currentIca * (slot.baseIca / currentSlotBase));
+    const horasDeLaFranja = hourlyPattern.filter(h => h.hour >= slot.hourStart && h.hour <= slot.hourEnd);
+    if (horasDeLaFranja.length === 0) return currentIca; // todavía no llegó el patrón histórico
+    const promedio = horasDeLaFranja.reduce((sum, h) => sum + h.avgIca, 0) / horasDeLaFranja.length;
+    return Math.round(promedio);
   };
 
   const slotIca = getSlotIca(selectedSlot);
@@ -400,7 +410,7 @@ const HeatmapHoras = () => {
         {/* Nota Metodológica de Integridad */}
         <div className="mt-6 pt-4 border-t border-[#F2E8D5] flex items-center justify-between text-[11px] text-[#8C8C86]">
           <span>
-            🔬 Patrón bio-atmosférico calibrado con <strong>62.1M+ lecturas históricas</strong> de la red Tángara en ClickHouse.
+            🔬 Promedio real por hora calculado sobre <strong>65M+ lecturas históricas</strong> de la red Tángara en ClickHouse.
           </span>
           <span className="hidden sm:inline font-semibold text-[#2D6A4F]">
             Norma EPA & MinAmbiente Res. 2254

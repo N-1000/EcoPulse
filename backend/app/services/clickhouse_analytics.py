@@ -473,3 +473,83 @@ def _fallback_serie_por_sensor() -> Dict[str, Any]:
         "unit": "µg/m³"
     }
 
+
+# ═══════════════════════════════════════════════════════════
+# PATRÓN HORARIO REAL (¿a qué hora es mejor salir en Cali?)
+#
+# Reemplaza el `baseIca` hardcodeado que tenía HeatmapHoras.tsx: esos 5
+# valores por franja no estaban calibrados contra ningún dato real pese a
+# que el componente lo afirmaba en el pie de página. Verificado contra
+# 65M+ lecturas reales (2026-09-20): 4 de las 5 franjas resultaron
+# razonablemente cercanas al valor hardcodeado, pero "Pico Tarde y Noche"
+# (17h-20h) estaba invertido -- el componente lo declaraba como la peor
+# franja del día (ICA 64) cuando en realidad es la MÁS limpia (ICA real
+# ~29), por debajo incluso de la madrugada y el mediodía. Además, el
+# patrón de la mañana (6h-8h) es igual de fuerte sábado y domingo que
+# entre semana -- no es un fenómeno exclusivamente "laboral/escolar"
+# lunes a viernes como describía el texto original.
+# ═══════════════════════════════════════════════════════════
+
+_CACHE_HOURLY_PATTERN: Optional[tuple[float, List[Dict[str, Any]]]] = None
+HOURLY_PATTERN_TTL = 3600.0  # 1 hora -- es un promedio agregado sobre todo el histórico, no cambia rápido
+
+
+def get_hourly_pattern_clickhouse() -> List[Dict[str, Any]]:
+    """Promedio real de PM2.5/ICA por hora del día, agregado sobre todo el histórico de la red Tángara."""
+    global _CACHE_HOURLY_PATTERN
+    now_ts = time.time()
+    if _CACHE_HOURLY_PATTERN is not None:
+        cached_time, cached_data = _CACHE_HOURLY_PATTERN
+        if now_ts - cached_time < HOURLY_PATTERN_TTL:
+            return cached_data
+
+    settings = get_settings()
+    if not ping():
+        logger.warning("get_hourly_pattern_clickhouse: fallback estático — ping a ClickHouse falló")
+        return _FALLBACK_HOURLY_PATTERN
+
+    query = f"""
+        SELECT
+            toHour(toTimeZone(time, 'America/Bogota')) AS hora,
+            round(avg(pm25), 2) AS avg_pm25
+        FROM {settings.clickhouse_database}.plata_tangara_sensores
+        WHERE pm25 >= 0 AND pm25 <= 500
+        GROUP BY hora
+        ORDER BY hora
+    """
+    try:
+        rows = query_rows(query)
+        if rows and len(rows) == 24:
+            result = [
+                {
+                    "hour": int(r["hora"]),
+                    "avgPm25": float(r["avg_pm25"]),
+                    "avgIca": calcular_ica_pm25_val(float(r["avg_pm25"])),
+                }
+                for r in sorted(rows, key=lambda r: r["hora"])
+            ]
+            _CACHE_HOURLY_PATTERN = (now_ts, result)
+            return result
+        logger.warning(
+            "get_hourly_pattern_clickhouse: fallback estático — %d horas devueltas (esperaba 24)", len(rows)
+        )
+    except Exception as exc:
+        logger.warning("get_hourly_pattern_clickhouse: fallback estático — excepción en la query: %s", exc)
+
+    _CACHE_HOURLY_PATTERN = (now_ts, _FALLBACK_HOURLY_PATTERN)
+    return _FALLBACK_HOURLY_PATTERN
+
+
+# Fallback offline: no es una curva inventada -- es el snapshot real medido
+# el 2026-09-20 (misma query de arriba, contra 65M+ lecturas), congelado
+# para cuando ClickHouse no responde. Se usa el mismo criterio que los
+# demás fallbacks de este archivo (_fallback_24h_trends, etc.).
+_FALLBACK_HOURLY_PATTERN: List[Dict[str, Any]] = [
+    {"hour": h, "avgPm25": pm25, "avgIca": calcular_ica_pm25_val(pm25)}
+    for h, pm25 in enumerate([
+        9.62, 9.60, 9.79, 9.84, 10.00, 10.88, 12.38, 13.59, 14.47, 14.02,
+        12.84, 12.07, 11.59, 10.93, 9.39, 7.46, 6.42, 6.25, 6.55, 7.21,
+        7.97, 9.00, 9.46, 9.56,
+    ])
+]
+

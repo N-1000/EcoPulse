@@ -9,6 +9,7 @@ from app.services.clickhouse_analytics import (
     get_monthly_historical_clickhouse,
     get_24h_trends_clickhouse,
     get_serie_por_sensor,
+    get_hourly_pattern_clickhouse,
 )
 
 
@@ -39,5 +40,16 @@ def get_serie_sensores() -> Dict[str, Any]:
     Usado para el spaghetti chart multi-sensor de TendenciaSemana.
     """
     return get_serie_por_sensor()
+
+
+@router.get("/hourly-pattern")
+def get_hourly_pattern() -> List[Dict[str, Any]]:
+    """
+    Promedio real de PM2.5/ICA por hora del día (0-23h), agregado sobre
+    todo el histórico de la red Tángara. Usado por HeatmapHoras para
+    mostrar cómo varía el aire durante el día con datos reales, no un
+    patrón hardcodeado.
+    """
+    return get_hourly_pattern_clickhouse()
 
 

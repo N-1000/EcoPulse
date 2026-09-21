@@ -6,6 +6,7 @@
 //   GET  /api/nodes                          -> TangaraNode[]
 //   GET  /api/v1/air-quality/trends-24h      -> WeeklyTrend
 //   GET  /api/v1/air-quality/monthly-historical -> MonthRecord[]
+//   GET  /api/v1/air-quality/hourly-pattern     -> HourlyPatternPoint[]
 //   GET  /api/routing/green-zones            -> park[]
 //   GET  /api/routing/best-destination       -> park
 //   POST /api/routing/healthy-route          -> RouteResult
@@ -62,6 +63,19 @@ export const fetch24hTrends = (metric = '24h'): Promise<any> =>
     .catch(() => {
       console.warn('[EcoPulse] Backend no disponible — sin tendencias 24h.');
       return null;
+    });
+
+// --------------------------------------------------
+// Patrón horario real (promedio de PM2.5/ICA por hora del día, todo el histórico)
+// --------------------------------------------------
+export interface HourlyPatternPoint { hour: number; avgPm25: number; avgIca: number; }
+
+export const fetchHourlyPattern = (): Promise<HourlyPatternPoint[]> =>
+  fetch(`${API_BASE_URL}/api/v1/air-quality/hourly-pattern`)
+    .then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<HourlyPatternPoint[]>; })
+    .catch(() => {
+      console.warn('[EcoPulse] Backend no disponible — sin patrón horario real.');
+      return [] as HourlyPatternPoint[];
     });
 
 // --------------------------------------------------
