@@ -1,0 +1,75 @@
+# respuestas.yaml — EcoPulse
+#
+# Texto de respuesta conversacional que le da EcoPulse al usuario. El
+# router de MuadDib (canonical.yaml/rules_nivel0.yaml) solo declara QUÉ
+# intención es un mensaje; QUÉ DECIRLE al usuario vive acá, no en
+# chat.py ni en ningún YAML de MuadDib -- regla de arquitectura repetida
+# desde el wiring inicial (ver chat.py).
+#
+# Antes vivía hardcodeado como dicts/listas de Python en chat.py. Se
+# extrajo acá para separar contenido de producto (esto) de lógica de
+# despacho (chat.py). Solo cubre texto ESTÁTICO -- las respuestas que
+# necesitan datos en vivo (ICA actual, ranking de nodos, noticias, etc.)
+# siguen armándose en Python porque son f-strings con datos reales, no
+# hay nada que ganar moviéndolas a YAML sin agregar un motor de
+# templating que hoy no hace falta.
+
+escalada:
+  generica: >-
+    No estoy seguro de haber entendido bien. ¿Podés reformular la pregunta
+    sobre la calidad del aire en Cali?
+
+# Reconocida-sin-capacidad: canonical.yaml declara action: [] para estas
+# intenciones a propósito (no hay auth/sesión, no hay endpoint, o el dato
+# está bloqueado). El router solo reconoce la intención; el texto vive acá.
+no_capacidad:
+  consultar_pronostico: >-
+    Todavía no tengo un modelo de pronóstico del aire -- eso no existe en el
+    backend de EcoPulse. Te puedo mostrar la tendencia real de las últimas horas.
+  solicitar_reporte: >-
+    Todavía no genero reportes ni PDFs descargables. Puedo mostrarte el
+    histórico mensual o la tendencia de las últimas 24 horas si te sirve.
+  comparar_calidad_aire: >-
+    Todavía no tengo el aire desagregado por comuna o barrio -- eso no está
+    disponible en los datos de EcoPulse hoy. Te puedo mostrar el estado
+    general de la ciudad.
+  activar_alerta: >-
+    Todavía no tengo sistema de alertas -- EcoPulse no maneja cuentas de usuario.
+  cancelar_alerta: >-
+    No hay alertas que cancelar -- ese sistema todavía no existe en EcoPulse.
+  configurar_alerta: >-
+    Todavía no puedo configurar alertas -- EcoPulse no maneja cuentas de usuario.
+  agregar_sensor: >-
+    Todavía no tengo favoritos ni watchlist -- EcoPulse no maneja cuentas de usuario.
+
+# Contenido real, recuperado del agent_core.py original (borrado, ver
+# git show 9e2b481eabf7c8b2ecf01a7c2256ae7123a48cc0~1) -- no inventado.
+saludos:
+  - "¡Hola, ciudadano! Revisa el mapa EcoPulse para ver la calidad del aire en tiempo real en tu zona."
+  - "¡Claro que sí, parcero! Consulta el semáforo ICA en el mapa para planear tu actividad de forma segura."
+  - "¡Mirá ve! La red EcoPulse tiene datos en tiempo real del aire de Cali. ¿En qué te puedo ayudar?"
+  - "¡Qué nota, ciudadano! EcoPulse AI está aquí para ayudarte a explorar Cali de forma inteligente y ecológica."
+
+# Planes rápidos (pance/caminata/bici/borondo). pance tiene una aclaración
+# aparte -- ver el fix 2026-09-20: antes citaba el ICA promedio de la
+# CIUDAD junto al nombre "Pance", dando la impresión de ser un dato
+# puntual de esa zona. clickhouse_nodes.py no desagrega por región (mismo
+# hueco documentado para comparar_calidad_aire en canonical.yaml), así
+# que ahora no se cita ningún número -- ni de ciudad ni inventado.
+planes:
+  pance:
+    frases:
+      - "¡Uff, Pance es una verraquera, ciudadano! Consulta el sensor más cercano en el mapa para ver el ICA en tiempo real antes de salir. El río está bueno pa' refrescarse, eso sí."
+      - "¡Mirá ve, qué plan tan chuzón! Revisa el semáforo del nodo Pance en el mapa. Si está verde, ¡vamos! Y no olvides cuidar el río."
+    aclaracion: >-
+      Ojo: todavía no tengo el aire desagregado por zona, así que no puedo
+      darte el ICA específico de Pance -- consultá el sensor más cercano en el mapa.
+  caminata:
+    - "¡Qué calidoso ese plan! Antes de salir, revisa el ICA de tu zona en el mapa EcoPulse. La madrugada o el tardecito (después de las 4pm) suelen ser los mejores horarios. ¡Lleva agua, parcero!"
+    - "¡Sí señor, a caminar se dijo! Usa la Ruta Saludable del mapa para evitar zonas de alto tráfico. Los cerros tutelares tienen el aire más fresco de la ciudad."
+  bici:
+    - "¡Ay, parcero, en bici por Cali es una chimba! Activa la modalidad 'Bicicleta' en la Ruta Saludable del mapa para encontrar el camino con mejor calidad del aire. ¡Y casco, que eso es ley!"
+    - "¡Ruta en bici, qué bello plan, causita! Consulta el mapa para ver qué nodos están en verde hoy. Sal tempranito antes de las 7am."
+  borondo:
+    - "¡Eso es lo que necesitaba escuchar, el borondo! Revisa el semáforo del mapa para los barrios del plan: San Antonio, La Loma de la Cruz, Granada. Si están en verde, ¡vamos que Cali es verraca!"
+    - "¡Viva Cali! Antes del borondo, chequea el ICA en el mapa. Empieza en el Museo La Tertulia, sube a Cristo Rey y termina donde el cuerpo aguante."

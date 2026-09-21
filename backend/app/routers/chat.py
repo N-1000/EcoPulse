@@ -12,8 +12,10 @@
 import logging
 import random
 import time
+from pathlib import Path
 from typing import Any, Callable
 
+import yaml
 from fastapi import APIRouter, Request
 
 from app.models.chat import ChatRequest, ChatResponse, UIAction
@@ -31,10 +33,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
-GENERIC_ESCALATION_REPLY = (
-    "No estoy seguro de haber entendido bien. ¿Podés reformular la pregunta "
-    "sobre la calidad del aire en Cali?"
-)
+# Texto de respuesta conversacional: vive en respuestas.yaml, no acá (ver
+# el header de ese archivo). Se carga una sola vez al importar este módulo.
+_RESPUESTAS_PATH = Path(__file__).resolve().parent.parent / "muaddib_client" / "respuestas.yaml"
+with _RESPUESTAS_PATH.open("r", encoding="utf-8") as _f:
+    _RESPUESTAS: dict[str, Any] = yaml.safe_load(_f)
+
+GENERIC_ESCALATION_REPLY: str = _RESPUESTAS["escalada"]["generica"]
+NO_CAPACIDAD: dict[str, str] = _RESPUESTAS["no_capacidad"]
+_GREETING_TEXTS: list[str] = _RESPUESTAS["saludos"]
+_PANCE = _RESPUESTAS["planes"]["pance"]
+_CAMINATA_TEXTS: list[str] = _RESPUESTAS["planes"]["caminata"]
+_BICI_TEXTS: list[str] = _RESPUESTAS["planes"]["bici"]
+_BORONDO_TEXTS: list[str] = _RESPUESTAS["planes"]["borondo"]
 
 _ICA_LEVEL_LABELS = (
     (50, "Buena"),
@@ -54,59 +65,6 @@ def _nivel_label(ica: int) -> str:
 
 
 # ──────────────────────────────────────────────────────────────
-# Reconocida-sin-capacidad: canonical.yaml declara action: [] para estas
-# intenciones a propósito (no hay auth/sesión, no hay endpoint, o el dato
-# está bloqueado). El router solo reconoce la intención; el texto vive acá.
-# ──────────────────────────────────────────────────────────────
-NO_CAPACIDAD: dict[str, str] = {
-    "consultar_pronostico": (
-        "Todavía no tengo un modelo de pronóstico del aire -- eso no existe en el "
-        "backend de EcoPulse. Te puedo mostrar la tendencia real de las últimas horas."
-    ),
-    "solicitar_reporte": (
-        "Todavía no genero reportes ni PDFs descargables. Puedo mostrarte el histórico "
-        "mensual o la tendencia de las últimas 24 horas si te sirve."
-    ),
-    "comparar_calidad_aire": (
-        "Todavía no tengo el aire desagregado por comuna o barrio -- eso no está "
-        "disponible en los datos de EcoPulse hoy. Te puedo mostrar el estado general de la ciudad."
-    ),
-    "activar_alerta": "Todavía no tengo sistema de alertas -- EcoPulse no maneja cuentas de usuario.",
-    "cancelar_alerta": "No hay alertas que cancelar -- ese sistema todavía no existe en EcoPulse.",
-    "configurar_alerta": "Todavía no puedo configurar alertas -- EcoPulse no maneja cuentas de usuario.",
-    "agregar_sensor": "Todavía no tengo favoritos ni watchlist -- EcoPulse no maneja cuentas de usuario.",
-}
-
-
-# ──────────────────────────────────────────────────────────────
-# Contenido real, recuperado del agent_core.py original (borrado, ver
-# git show 9e2b481eabf7c8b2ecf01a7c2256ae7123a48cc0~1) -- no inventado acá.
-# ──────────────────────────────────────────────────────────────
-_GREETING_TEXTS = [
-    "¡Hola, ciudadano! Revisa el mapa EcoPulse para ver la calidad del aire en tiempo real en tu zona.",
-    "¡Claro que sí, parcero! Consulta el semáforo ICA en el mapa para planear tu actividad de forma segura.",
-    "¡Mirá ve! La red EcoPulse tiene datos en tiempo real del aire de Cali. ¿En qué te puedo ayudar?",
-    "¡Qué nota, ciudadano! EcoPulse AI está aquí para ayudarte a explorar Cali de forma inteligente y ecológica.",
-]
-_PANCE_TEXTS = [
-    "¡Uff, Pance es una verraquera, ciudadano! Consulta el sensor más cercano en el mapa para ver el ICA en tiempo real antes de salir. El río está bueno pa' refrescarse, eso sí.",
-    "¡Mirá ve, qué plan tan chuzón! Revisa el semáforo del nodo Pance en el mapa. Si está verde, ¡vamos! Y no olvides cuidar el río.",
-]
-_CAMINATA_TEXTS = [
-    "¡Qué calidoso ese plan! Antes de salir, revisa el ICA de tu zona en el mapa EcoPulse. La madrugada o el tardecito (después de las 4pm) suelen ser los mejores horarios. ¡Lleva agua, parcero!",
-    "¡Sí señor, a caminar se dijo! Usa la Ruta Saludable del mapa para evitar zonas de alto tráfico. Los cerros tutelares tienen el aire más fresco de la ciudad.",
-]
-_BICI_TEXTS = [
-    "¡Ay, parcero, en bici por Cali es una chimba! Activa la modalidad 'Bicicleta' en la Ruta Saludable del mapa para encontrar el camino con mejor calidad del aire. ¡Y casco, que eso es ley!",
-    "¡Ruta en bici, qué bello plan, causita! Consulta el mapa para ver qué nodos están en verde hoy. Sal tempranito antes de las 7am.",
-]
-_BORONDO_TEXTS = [
-    "¡Eso es lo que necesitaba escuchar, el borondo! Revisa el semáforo del mapa para los barrios del plan: San Antonio, La Loma de la Cruz, Granada. Si están en verde, ¡vamos que Cali es verraca!",
-    "¡Viva Cali! Antes del borondo, chequea el ICA en el mapa. Empieza en el Museo La Tertulia, sube a Cristo Rey y termina donde el cuerpo aguante.",
-]
-
-
-# ──────────────────────────────────────────────────────────────
 # Handlers de acción real -- cada uno devuelve (texto, [UIAction]).
 # ──────────────────────────────────────────────────────────────
 
@@ -122,16 +80,13 @@ def _handle_show_quality_air_region(decision: Decision) -> tuple[str, list[UIAct
     # un catálogo de 5 nodos inventados con ICA hardcodeado. No se reutiliza esa
     # data falsa acá. entities.yaml declara el tipo "region" pero clickhouse_nodes.py
     # no desagrega comuna/barrio (hardcodeado a "Cali") -- mismo hueco que
-    # comparar_calidad_aire, documentado en canonical.yaml. Por ende: texto real de
-    # producto (recuperado del agent_core.py borrado) + ICA real de ciudad, sin
-    # fingir que es un dato puntual de la región.
-    nodos = obtener_nodos_actuales()
-    ica = ica_promedio_ciudad(nodos)
-    base = random.choice(_PANCE_TEXTS)
-    reply = (
-        f"{base} Ojo: todavía no tengo el aire desagregado por zona, así que no puedo "
-        f"darte el ICA puntual de Pance -- el promedio de la ciudad ahora mismo es {ica} ({_nivel_label(ica)})."
-    )
+    # comparar_calidad_aire, documentado en canonical.yaml.
+    #
+    # Fix 2026-09-20: esto antes citaba el ICA promedio de la CIUDAD junto al
+    # nombre "Pance", lo que se leía como si fuera un dato puntual de esa zona.
+    # No hay forma honesta de dar un número acá sin desagregación real -- no
+    # se cita ninguno, ni de ciudad ni inventado.
+    reply = f"{random.choice(_PANCE['frases'])} {_PANCE['aclaracion']}"
     return reply, [UIAction(type="navigate", payload={"page": "mapa"})]
 
 
