@@ -10,3 +10,9 @@ python-dotenv==1.0.1
 cachetools==5.5.0
 httpx==0.28.1
 geopy==2.4.1
+
+# Router de intent de MuadDib. Pineado a un commit SHA, no a la rama
+# "dev" (que se mueve a diario) -- mismo criterio que ya usamos para
+# las GitHub Actions. El SHA de acá DEBE coincidir con
+# app/muaddib_client/SYNC.py::MUADDIB_SOURCE_COMMIT.
+git+https://github.com/N-1000/MuadDib.git@ff608cec5bc0ed60fe40e691050202bb4d3f7c24#egg=muaddib

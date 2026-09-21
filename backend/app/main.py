@@ -2,12 +2,27 @@
 # ECOPULSE 2026 - Punto de entrada FastAPI
 # Inteligencia Ambiental Urbana · Cali - Valle del Cauca
 # ===================================================
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.db.clickhouse import ping
+from app.muaddib_client.loader import iniciar_router
 from app.routers import meta, nodes, routing, air_quality, chat, news
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Config y modelo de MuadDib se cargan una sola vez acá, no por request.
+    # iniciar_router() deja propagar ConfigError (config rota => no arranca)
+    # pero nunca deja que una falla de carga del modelo tumbe el servicio.
+    app.state.muaddib_router = iniciar_router()
+    yield
 
 
 app = FastAPI(
@@ -15,6 +30,7 @@ app = FastAPI(
     description="Backend de Inteligencia Ambiental Urbana. Consume la capa Silver "
     "(tangara_plata) para sensores en vivo y la capa Oro (tangara_oro) para analíticas.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.include_router(chat.router)

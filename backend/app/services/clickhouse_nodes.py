@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from app.db.clickhouse import ping, query_rows
+from app.services.mock_data import TANGARA_NODES
 from app.utils.ica import calcular_ica_pm25
 
 logger = logging.getLogger(__name__)
@@ -131,3 +132,24 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
             }
         })
     return nodos
+
+
+def obtener_nodos_actuales() -> List[Dict[str, Any]]:
+    """Nodos reales de ClickHouse con fallback a datos mock, logueando por qué.
+
+    Antes duplicado en routers/nodes.py y routers/routing.py; un tercer
+    call site (el dispatch de chat) hizo que valiera la pena extraerlo
+    a una sola función en vez de copiar el bloque una vez más.
+    """
+    if ping():
+        try:
+            rows = get_nodos_clickhouse()
+            if rows:
+                return rows
+            logger.warning("obtener_nodos_actuales: fallback a datos mock — ClickHouse respondió sin filas")
+        except Exception as exc:
+            logger.error("obtener_nodos_actuales: fallback a datos mock — excepción consultando ClickHouse: %s", exc)
+    else:
+        logger.warning("obtener_nodos_actuales: fallback a datos mock — ping a ClickHouse falló")
+
+    return TANGARA_NODES
