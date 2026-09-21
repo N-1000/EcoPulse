@@ -23,7 +23,7 @@ from app.services.news_service import fetch_live_cali_news
 from app.services.routing import CALI_PARKS
 from app.utils.node_metrics import ica_promedio_ciudad, nodo_mejor_ica, nodo_peor_ica
 
-from intent_router.metrics import EventoDecision, log_decision
+from intent_router.metrics import EventoDecision, hit_rate, log_decision
 from intent_router.router import Decision, resolve
 
 logger = logging.getLogger(__name__)
@@ -354,6 +354,42 @@ def _procesar_decision(decision: Decision) -> tuple[str, list[UIAction]]:
     return reply, acciones
 
 
+# ──────────────────────────────────────────────────────────────
+# Visibilidad sobre cómo está resolviendo MuadDib en este proceso.
+#
+# Deliberadamente NO se mantiene acá una segunda cuenta por nivel/intención:
+# eso ya lo tiene `_eventos` adentro de intent_router.metrics, y llevar la
+# misma cuenta por duplicado en el cliente es exactamente el patrón que ya
+# se había consolidado en embeddings.py para que dos mediciones de lo mismo
+# no puedan divergir. Si hace falta desglose por nivel/intención, el arreglo
+# es que MuadDib exponga un accessor público sobre su propio acumulador
+# (reportado a la sesión de MuadDib) -- no recalcularlo acá.
+#
+# `total` sí se cuenta acá: es un entero simple incrementado en el mismo
+# call site que log_decision(), no una métrica derivada que pueda leerse
+# distinto -- sirve como denominador para interpretar hit_rate().
+#
+# hit_rate() mide tasa de RESOLUCIÓN LOCAL (no escaló a Nivel 2), no tasa de
+# ACIERTO -- una decisión resuelta mal en Nivel 0/1 cuenta igual que una
+# resuelta bien. No hay manera automática de medir accierto sin un corpus
+# etiquetado a mano contra la intención esperada.
+#
+# No se guarda el texto de los mensajes escalados: es un endpoint sin auth,
+# y el texto libre del usuario puede incluir su barrio u otro dato
+# identificable. Solo conteos.
+# ──────────────────────────────────────────────────────────────
+_total_decisiones = 0
+
+
+@router.get("/metrics")
+async def chat_metrics() -> dict[str, Any]:
+    """hit_rate real de MuadDib desde que arrancó este proceso, más el total como denominador."""
+    return {
+        "hit_rate": round(hit_rate(), 3),
+        "total_decisiones": _total_decisiones,
+    }
+
+
 @router.post("/", response_model=ChatResponse)
 async def process_chat(request: ChatRequest, http_request: Request) -> ChatResponse:
     motor = getattr(http_request.app.state, "muaddib_router", None)
@@ -371,8 +407,10 @@ async def process_chat(request: ChatRequest, http_request: Request) -> ChatRespo
 
     fragmentos: list[str] = []
     acciones: list[UIAction] = []
+    global _total_decisiones
     for decision in resultado.decisiones:
         log_decision(EventoDecision(decision=decision, latencia_ms=latencia_ms))
+        _total_decisiones += 1
         texto, ui = _procesar_decision(decision)
         if texto:
             fragmentos.append(texto)
