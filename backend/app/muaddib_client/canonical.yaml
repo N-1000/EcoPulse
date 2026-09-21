@@ -43,6 +43,13 @@
 # ninguno invalida al otro. No confundir "v2 no es peor que v1" con "v2 esta
 # sano": no lo esta. Corregir esto es reformular frases canonicas contra
 # datos reales, no una tarea de este commit.
+#
+# ACTUALIZACION 2026-09-20: se agregaron 4 intenciones (consultar_plan_
+# pance/caminata/bici/borondo, ver mas abajo) -- el 47.5% de arriba mide
+# el archivo de 17 intenciones, ya no el actual (21). No se corrio
+# validate_canonical.py de nuevo contra esta version -- el numero de
+# arriba quedo desactualizado, no se debe citar como vigente sin
+# remedirlo.
 
 client: ecopulse
 
@@ -151,6 +158,58 @@ intents:
       - "cual es el sensor mas contaminado ahora mismo"
       - "cual es el nodo con mejor calidad del aire"
       - "que zona tiene el aire mas limpio ahorita"
+
+  # --- Planes rapidos: agregado 2026-09-20 -- ---
+  # Mismas 4 intenciones ya declaradas en rules_nivel0.yaml (con phrases de
+  # una sola palabra, "pance"/"bici"/etc, pensadas para match EXACTO de
+  # Nivel 0). No tenian cobertura en Nivel 1: cualquier variacion ("quiero
+  # ir a pance", "Caminata Ecologica") no matcheaba nada acá y o escalaba
+  # a Nivel 2 o -- peor -- pegaba con confianza en una intencion no
+  # relacionada (verificado: "Caminata Ecologica" resolvia
+  # consultar_parques_zonas_verdes). Mismo action que ya usa
+  # rules_nivel0.yaml para cada una, para que el mismo handler del lado
+  # de EcoPulse sirva sin importar que nivel resolvio la Decision.
+
+  - name: consultar_plan_pance
+    action: ["show_quality_air"]
+    entity: ["region"]
+    sensitive: false
+    phrases:
+      - "quiero ir a pance"
+      - "tengo ganas de ir a pance este fin"
+      - "que tal esta el aire en pance"
+      - "es buena idea ir a pance hoy"
+      - "me provoca un paseo a pance"
+
+  - name: consultar_plan_caminata
+    action: ["navigate"]
+    sensitive: false
+    phrases:
+      - "que plan hay pa caminar"
+      - "quiero salir a caminar"
+      - "tengo ganas de una caminata"
+      - "donde puedo ir a caminar hoy"
+      - "que buena ruta hay para caminar"
+
+  - name: consultar_plan_bici
+    action: ["navigate"]
+    sensitive: false
+    phrases:
+      - "voy a salir en bici"
+      - "quiero dar una vuelta en bicicleta"
+      - "tengo ganas de montar bici"
+      - "es buen dia para salir en bici"
+      - "que ruta hay para ir en bici"
+
+  - name: consultar_plan_borondo
+    action: ["navigate"]
+    sensitive: false
+    phrases:
+      - "quiero hacer un borondo"
+      - "tengo ganas de un paseo turistico"
+      - "que plan turistico hay hoy"
+      - "vamos de borondo por cali"
+      - "quiero conocer cali hoy"
 
   # --- Reconocida-sin-capacidad: el router la reconoce, action: [] ---
   # EcoPulse escribe el texto de respuesta a partir del intent_name.
