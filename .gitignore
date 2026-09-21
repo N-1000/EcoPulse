@@ -49,4 +49,7 @@ other/env
 # corpus de prueba para frases canónicas de MuadDib) -- nunca versionar.
 datos/
 
+# Scripts de aprendizaje de Playwright (venv propio, no es parte del producto)
+playwright-lab/
+
 
