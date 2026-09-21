@@ -29,11 +29,14 @@ const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
   { id: 'sq4', text: '¿Qué comunas tienen el aire más limpio en Cali?' },
 ];
 
+// El `query` es la phrase EXACTA que rules_nivel0.yaml espera para cada
+// intención (match de cláusula completa, no substring -- ver MuadDib).
+// El `label` que ve el usuario en el botón no tiene por qué coincidir.
 const QUICK_OPTIONS: QuickOption[] = [
-  { label: 'Plan Pance', emoji: '🏞️', query: 'Plan Pance', responses: [] },
-  { label: 'Caminata Ecológica', emoji: '🥾', query: 'Caminata Ecológica', responses: [] },
-  { label: 'Ruta en Bici', emoji: '🚴', query: 'Ruta en Bici', responses: [] },
-  { label: 'Turístico / Borondo', emoji: '🗺️', query: 'Turístico / Borondo', responses: [] },
+  { label: 'Plan Pance', emoji: '🏞️', query: 'pance', responses: [] },
+  { label: 'Caminata Ecológica', emoji: '🥾', query: 'caminata', responses: [] },
+  { label: 'Ruta en Bici', emoji: '🚴', query: 'bici', responses: [] },
+  { label: 'Turístico / Borondo', emoji: '🗺️', query: 'borondo', responses: [] },
 ];
 
 // --------------------------------------------------
