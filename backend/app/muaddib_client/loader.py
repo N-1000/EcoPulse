@@ -15,8 +15,6 @@ import yaml
 from intent_router.config_loader import cargar_config
 from intent_router.embeddings import CanonicalEmbeddings, MODEL_DEFAULT, load_model, precompute_canonical
 
-from app.muaddib_client.SYNC import MUADDIB_SOURCE_COMMIT
-
 logger = logging.getLogger(__name__)
 
 CLIENT_DIR = Path(__file__).resolve().parent
@@ -42,7 +40,7 @@ def iniciar_router() -> MuadDibRouter:
     modelo no carga, canonical_data queda en None y resolve() resuelve
     solo por Nivel 0, escalando todo lo demas a Nivel 2.
     """
-    logger.info("MuadDib: cargando config de clients/ecopulse (sync commit %s)", MUADDIB_SOURCE_COMMIT)
+    logger.info("MuadDib: cargando config del cliente (owned en EcoPulse, backend/app/muaddib_client/)")
     config = cargar_config(CONFIG_PATH, RULES_PATH, ENTITIES_PATH)
 
     modelo = load_model(MODEL_DEFAULT)
