@@ -20,4 +20,11 @@ geopy==2.4.1
 #
 # 2026-09-21: bump a 12b0781 -- motor de Nivel 2 (escalada con tool-use
 # de Claude). Trae anthropic y jsonschema como dependencias transitivas.
-git+https://github.com/N-1000/MuadDib.git@12b0781ef7ed568ce85d8ad1e25dea4eb5551f06#egg=muaddib
+#
+# 2026-09-22: bump a 8a62a12 -- resolve_async() (Nivel 1 en un executor
+# propio, no bloquea el loop del caller) + Herramienta.funcion puede ser
+# sync o async (el motor detecta solo, corre las sync en asyncio.to_thread).
+# Medido en la prueba de carga: bajó el bloqueo del event loop de chat.py
+# de 184 eventos (peor 1.4s) a 4 (peor 0.55s) solo con el fix de caché de
+# EcoPulse -- este bump es para ver si resuelve el resto.
+git+https://github.com/N-1000/MuadDib.git@8a62a12b4c97ed158beb7435f5c741d6b6379ba8#egg=muaddib

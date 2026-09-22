@@ -3,7 +3,7 @@
 # ECOPULSE 2026 - routers/chat.py
 #
 # Único archivo de EcoPulse que conoce tipos de intent_router (Decision,
-# RoutingResult, resolve, resolver_escaladas). Traduce cada Decision a un
+# RoutingResult, resolve_async, resolver_escaladas). Traduce cada Decision a un
 # ChatResponse:
 #   - Nivel 0/1 resuelto: cada token de `accion` se traduce a una llamada
 #     a la Herramienta registrada en muaddib_client/tools.py (parámetros
@@ -30,7 +30,7 @@ from app.utils.node_metrics import nodo_peor_ica
 
 from intent_router.llm_engine import resolver_escaladas
 from intent_router.metrics import EventoDecision, hit_rate, log_decision
-from intent_router.router import Decision, resolve
+from intent_router.router import Decision, resolve_async
 
 logger = logging.getLogger(__name__)
 
@@ -234,10 +234,13 @@ async def process_chat(request: ChatRequest, http_request: Request) -> ChatRespo
 
     inicio = time.perf_counter()
     try:
-        resultado = resolve(request.message, motor.config, motor.canonical_data)
+        # resolve_async(), no resolve(): el encode de Nivel 1 corre en el
+        # executor dedicado de MuadDib (torch_threads pineado), no bloquea
+        # el event loop de este proceso -- mismo criterio que resolver_escaladas().
+        resultado = await resolve_async(request.message, motor.config, motor.canonical_data)
         resultado = await resolver_escaladas(resultado, motor.herramientas, motor.config, motor.api_key)
     except Exception as exc:
-        logger.error("chat: resolve()/resolver_escaladas() tiró una excepción inesperada: %s", exc)
+        logger.error("chat: resolve_async()/resolver_escaladas() tiró una excepción inesperada: %s", exc)
         return ChatResponse(reply=GENERIC_ESCALATION_REPLY, ai_actions=[])
     latencia_ms = (time.perf_counter() - inicio) * 1000
 
