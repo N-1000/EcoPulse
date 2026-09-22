@@ -1,6 +1,8 @@
 import logging
+import time
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from app.core.config import get_settings
 from app.db.clickhouse import ping, query_rows
 from app.services.mock_data import TANGARA_NODES
 from app.utils.ica import calcular_ica_pm25
@@ -134,7 +136,31 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
     return nodos
 
 
+# Caché en memoria: /api/nodes se pollea cada 60s desde cada pestaña abierta
+# (useNodes.ts) y el dato real cambia por minuto, no por request -- sin
+# caché, N usuarios concurrentes son N queries a ClickHouse por minuto.
+# TTL configurable por CACHE_TTL_SECONDS (Settings.cache_ttl_seconds,
+# existía declarado pero sin ningún consumidor); default 45s, a mitad del
+# rango pedido (30-60s).
+_CACHE_NODOS: Optional[tuple[float, List[Dict[str, Any]]]] = None
+
+
 def obtener_nodos_actuales() -> List[Dict[str, Any]]:
+    """Nodos reales de ClickHouse con fallback a datos mock, cacheados en memoria."""
+    global _CACHE_NODOS
+    now_ts = time.time()
+    ttl = get_settings().cache_ttl_seconds
+    if _CACHE_NODOS is not None:
+        cached_time, cached_data = _CACHE_NODOS
+        if now_ts - cached_time < ttl:
+            return cached_data
+
+    resultado = _obtener_nodos_sin_cache()
+    _CACHE_NODOS = (now_ts, resultado)
+    return resultado
+
+
+def _obtener_nodos_sin_cache() -> List[Dict[str, Any]]:
     """Nodos reales de ClickHouse con fallback a datos mock, logueando por qué.
 
     Antes duplicado en routers/nodes.py y routers/routing.py; un tercer

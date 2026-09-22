@@ -27,7 +27,11 @@ class Settings(BaseSettings):
 
     # --- App ---
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
-    cache_ttl_seconds: int = 300
+    # Usado por obtener_nodos_actuales() (clickhouse_nodes.py) para cachear
+    # /api/nodes. Default a mitad del rango pedido (30-60s): el dato real
+    # cambia por minuto, así que cachear más de 60s serviría un dato viejo,
+    # y menos de 30s no reduce la carga sobre ClickHouse de forma notable.
+    cache_ttl_seconds: int = 45
 
     # --- IA (opcional, para el chatbot) ---
     anthropic_api_key: str | None = None
