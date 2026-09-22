@@ -38,3 +38,28 @@ def calcular_ica_pm25(pm25: float | None) -> dict:
 def calcular_ica_valor(pm25: float | None) -> int:
     """Versión que devuelve solo el valor entero del ICA."""
     return calcular_ica_pm25(pm25)["ica"]
+
+
+# Etiqueta legible para humanos por nivel -- distinta del slug 'level' que
+# devuelve calcular_ica_pm25 (pensado para comparar/guardar, no para
+# mostrar). Antes duplicada como _ICA_LEVEL_LABELS en chat.py y tools.py.
+NIVEL_LABELS: dict[str, str] = {
+    "buena": "Buena",
+    "moderada": "Moderada",
+    "dañina-grupos-sensibles": "Dañina para grupos sensibles",
+    "dañina": "Dañina",
+    "muy-dañina": "Muy Dañina",
+    "peligrosa": "Peligrosa",
+}
+
+
+def nivel_label_desde_ica(ica: int) -> str:
+    """Etiqueta legible ('Buena', 'Moderada', ...) a partir de un ICA YA CALCULADO (no de PM2.5).
+
+    Reusa el lado ICA (i_low/i_high) de PM25_BREAKPOINTS -- para cuando se
+    tiene un ICA promedio/agregado y no el PM2.5 de origen (ej. ica_promedio_ciudad()).
+    """
+    for _, _, _, i_high, level in PM25_BREAKPOINTS:
+        if ica <= i_high:
+            return NIVEL_LABELS[level]
+    return NIVEL_LABELS["peligrosa"]

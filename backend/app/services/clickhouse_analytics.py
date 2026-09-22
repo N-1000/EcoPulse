@@ -11,35 +11,15 @@ import logging
 import time
 from app.db.clickhouse import query_rows, ping
 from app.core.config import get_settings
+from app.utils.ica import calcular_ica_valor
 
 logger = logging.getLogger(__name__)
 
-
-# Breakpoints estándar EPA / Resolución 2254 (C_low, C_high, I_low, I_high)
-PM25_BREAKPOINTS = (
-    (0.0, 12.0, 0, 50),
-    (12.1, 35.4, 51, 100),
-    (35.5, 55.4, 101, 150),
-    (55.5, 150.4, 151, 200),
-    (150.5, 250.4, 201, 300),
-    (250.5, 500.4, 301, 500),
-)
 
 _CACHE_MONTHLY: Dict[str, tuple[float, List[Dict[str, Any]]]] = {}
 _CACHE_TRENDS: Dict[str, tuple[float, Dict[str, Any]]] = {}
 _CACHE_SENSOR_SERIE: Optional[tuple[float, Dict[str, Any]]] = None
 CACHE_TTL = 180.0  # 3 minutos
-
-
-
-def calcular_ica_pm25_val(pm25: float | None) -> int:
-    """Calcula el ICA utilizando la fórmula de interpolación lineal estándar EPA."""
-    if pm25 is None or pm25 <= 0:
-        return 0
-    for c_low, c_high, i_low, i_high in PM25_BREAKPOINTS:
-        if pm25 <= c_high:
-            return int(round(((i_high - i_low) / (c_high - c_low)) * (pm25 - c_low) + i_low))
-    return 500
 
 
 def get_monthly_historical_clickhouse(year: str = "2026") -> List[Dict[str, Any]]:
@@ -147,7 +127,7 @@ def _format_all_12_months(rows: List[Dict[str, Any]], year: int) -> List[Dict[st
         m = int(r["mes_num"])
         db_map[m] = {
             "avg_pm25": float(r["avg_pm25"]),
-            "avg_ica": calcular_ica_pm25_val(float(r["avg_pm25"])),
+            "avg_ica": calcular_ica_valor(float(r["avg_pm25"])),
             "cnt": int(r.get("cnt", 0))
         }
 
@@ -202,7 +182,7 @@ def _format_chronological_trend_rows(rows: List[Dict[str, Any]], metric: str) ->
             val_co2 = float(r.get("avg_co2", 0) or 0)
             values.append(round(val_co2, 0) if val_co2 > 0 else 420.0)
         else:
-            values.append(calcular_ica_pm25_val(float(r["avg_pm25"])))
+            values.append(calcular_ica_valor(float(r["avg_pm25"])))
 
     # Línea de referencia normativa
     if metric == "pm25":
@@ -524,7 +504,7 @@ def get_hourly_pattern_clickhouse() -> List[Dict[str, Any]]:
                 {
                     "hour": int(r["hora"]),
                     "avgPm25": float(r["avg_pm25"]),
-                    "avgIca": calcular_ica_pm25_val(float(r["avg_pm25"])),
+                    "avgIca": calcular_ica_valor(float(r["avg_pm25"])),
                 }
                 for r in sorted(rows, key=lambda r: r["hora"])
             ]
@@ -545,7 +525,7 @@ def get_hourly_pattern_clickhouse() -> List[Dict[str, Any]]:
 # para cuando ClickHouse no responde. Se usa el mismo criterio que los
 # demás fallbacks de este archivo (_fallback_24h_trends, etc.).
 _FALLBACK_HOURLY_PATTERN: List[Dict[str, Any]] = [
-    {"hour": h, "avgPm25": pm25, "avgIca": calcular_ica_pm25_val(pm25)}
+    {"hour": h, "avgPm25": pm25, "avgIca": calcular_ica_valor(pm25)}
     for h, pm25 in enumerate([
         9.62, 9.60, 9.79, 9.84, 10.00, 10.88, 12.38, 13.59, 14.47, 14.02,
         12.84, 12.07, 11.59, 10.93, 9.39, 7.46, 6.42, 6.25, 6.55, 7.21,
