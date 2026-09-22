@@ -17,4 +17,7 @@ geopy==2.4.1
 # etc.) -- la config del cliente (backend/app/muaddib_client/*.yaml) ya
 # no es una copia sincronizada de MuadDib, vive y se edita acá
 # directamente (2026-09-20, se retiró SYNC.py).
-git+https://github.com/N-1000/MuadDib.git@ff608cec5bc0ed60fe40e691050202bb4d3f7c24#egg=muaddib
+#
+# 2026-09-21: bump a 12b0781 -- motor de Nivel 2 (escalada con tool-use
+# de Claude). Trae anthropic y jsonschema como dependencias transitivas.
+git+https://github.com/N-1000/MuadDib.git@12b0781ef7ed568ce85d8ad1e25dea4eb5551f06#egg=muaddib

@@ -14,6 +14,15 @@ from typing import Any, Optional
 import yaml
 from intent_router.config_loader import cargar_config
 from intent_router.embeddings import CanonicalEmbeddings, MODEL_DEFAULT, load_model, precompute_canonical
+from intent_router.tools import (
+    Herramienta,
+    validar_acciones_registradas,
+    validar_coherencia_sensitive_efecto,
+    validar_esquemas_herramientas,
+)
+
+from app.core.config import get_settings
+from app.muaddib_client.tools import HERRAMIENTAS
 
 logger = logging.getLogger(__name__)
 
@@ -28,20 +37,32 @@ CANONICAL_PATH = CLIENT_DIR / "canonical.yaml"
 class MuadDibRouter:
     config: dict[str, Any]
     canonical_data: Optional[CanonicalEmbeddings]
+    herramientas: tuple[Herramienta, ...]
+    api_key: Optional[str]
 
 
 def iniciar_router() -> MuadDibRouter:
-    """Carga config, modelo y embeddings canonicos al arranque de FastAPI.
+    """Carga config, modelo, embeddings canonicos y valida el registro de herramientas al arranque.
 
-    cargar_config() puede tirar ConfigError -- se deja propagar a proposito:
-    un config.yaml/rules_nivel0.yaml/entities.yaml roto no debe dejar
-    arrancar el servicio, mismo criterio que ConfigError ya declara en
-    MuadDib. load_model() nunca tira (ya degrada internamente): si el
-    modelo no carga, canonical_data queda en None y resolve() resuelve
-    solo por Nivel 0, escalando todo lo demas a Nivel 2.
+    Deja propagar cualquier excepcion (ConfigError de cargar_config() o de
+    las tres compuertas de tools.py) a proposito -- el CALLER (lifespan en
+    app/main.py) es quien decide que hacer con eso: deshabilitar solo el
+    chat, no tumbar el proceso entero (mapa/tendencias/noticias no
+    dependen de MuadDib). load_model() nunca tira (ya degrada
+    internamente): si el modelo no carga, canonical_data queda en None y
+    resolve() resuelve solo por Nivel 0, escalando todo lo demas a Nivel 2.
     """
     logger.info("MuadDib: cargando config del cliente (owned en EcoPulse, backend/app/muaddib_client/)")
-    config = cargar_config(CONFIG_PATH, RULES_PATH, ENTITIES_PATH)
+    config = cargar_config(CONFIG_PATH, RULES_PATH, ENTITIES_PATH, CANONICAL_PATH)
+
+    validar_esquemas_herramientas(HERRAMIENTAS)
+    validar_acciones_registradas(config, HERRAMIENTAS)
+    validar_coherencia_sensitive_efecto(config, HERRAMIENTAS)
+    logger.info("MuadDib: %d herramientas registradas y validadas (Nivel 1 + Nivel 2)", len(HERRAMIENTAS))
+
+    api_key = get_settings().anthropic_api_key
+    if not api_key:
+        logger.warning("MuadDib: ANTHROPIC_API_KEY no configurada -- Nivel 2 responderá con fallback_seguro")
 
     modelo = load_model(MODEL_DEFAULT)
     if modelo is None:
@@ -50,11 +71,11 @@ def iniciar_router() -> MuadDibRouter:
             "solo Nivel 0 resuelve, todo lo demas escala a Nivel 2",
             MODEL_DEFAULT,
         )
-        return MuadDibRouter(config=config, canonical_data=None)
+        return MuadDibRouter(config=config, canonical_data=None, herramientas=HERRAMIENTAS, api_key=api_key)
 
     canonical_data = _cargar_canonical(modelo)
     logger.info("MuadDib: modelo y embeddings canonicos cargados -- Nivel 0 y Nivel 1 activos")
-    return MuadDibRouter(config=config, canonical_data=canonical_data)
+    return MuadDibRouter(config=config, canonical_data=canonical_data, herramientas=HERRAMIENTAS, api_key=api_key)
 
 
 def _cargar_canonical(modelo: Any) -> CanonicalEmbeddings:

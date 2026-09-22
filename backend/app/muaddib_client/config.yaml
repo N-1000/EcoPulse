@@ -19,3 +19,19 @@ routing:
 # distinguir "el usuario pidio mensual" de "se asumio 24h".
 entity_defaults:
   periodo: "24h"
+
+# Limites y modelo del motor de Nivel 2 (escalada con tool-use de
+# Claude). Sin defaults implicitos -- si falta uno, cargar_config() tira
+# ConfigError y el servicio no arranca (mismo criterio que routing).
+#
+# NOTA: llm_engine.py de MuadDib no acepta un system prompt inyectable
+# desde acá -- usa uno propio hardcodeado (trata mensaje/resultados de
+# herramientas como datos, nunca instrucciones; exige no inventar si no
+# hay grounding). El tono de EcoPulse NO se aplica a las respuestas de
+# Nivel 2 todavia -- reportado a MuadDib como posible mejora futura.
+nivel2:
+  timeout_s: 10.0
+  max_vueltas_tool_use: 4
+  max_tokens_respuesta: 1024
+  max_caracteres_resultado_herramienta: 2000
+  modelo: "claude-opus-5"

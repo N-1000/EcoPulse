@@ -35,6 +35,23 @@
 # navegacion/despliegue de UI de solo lectura), por eso sensitive: false
 # en todas. El campo esta declarado desde ya por regla de arquitectura,
 # aunque hoy no haya ningun caso true.
+#
+# ACTUALIZACION 2026-09-21 (Nivel 2 / tools.py): dos cambios forzados por
+# las compuertas de arranque nuevas.
+#   1. focus_node y enable_tool se sacan de consultar_nodo_mas_contaminado
+#      y consultar_ruta_saludable (quedan solo con "navigate"). Nunca
+#      tuvieron handler real del lado de EcoPulse (sin soporte en
+#      frontend ni backend, ver chat.py) -- validar_acciones_registradas
+#      ahora exige una Herramienta registrada para toda accion declarada,
+#      y registrar una para estas dos hubiera sido simular una capacidad
+#      que no existe.
+#   2. consultar_pronostico pasa de action:["navigate"] a action:[] para
+#      coincidir con canonical.yaml (que ya declaraba action:[] para el
+#      mismo nombre). Esto era el "choque real" reportado a MuadDib en el
+#      wiring inicial -- validar_consistencia_accion (config_loader.py)
+#      ahora lo hubiera bloqueado al arranque, asi que la correccion en
+#      el origen ya no es opcional. El parche temporal del lado de
+#      EcoPulse (chat.py) se retira en el mismo commit.
 
 client: ecopulse
 
@@ -56,7 +73,7 @@ intents:
       - "nodo con mayor contaminacion"
       - "mas contaminado"
     entity: []
-    action: ["navigate", "focus_node"]
+    action: ["navigate"]
     sensitive: false
 
   - name: consultar_pronostico
@@ -65,7 +82,7 @@ intents:
       - "pronostico"
       - "prediccion"
     entity: []
-    action: ["navigate"]
+    action: []
     sensitive: false
 
   - name: consultar_ruta_saludable
@@ -73,7 +90,7 @@ intents:
       - "ruta es mas saludable"
       - "correr"
     entity: []
-    action: ["navigate", "enable_tool"]
+    action: ["navigate"]
     sensitive: false
 
   - name: consultar_plan_pance

@@ -2,29 +2,33 @@
 # ===================================================
 # ECOPULSE 2026 - routers/chat.py
 #
-# Traduce la Decision de MuadDib (intencion + nivel + accion) a un
-# ChatResponse. El mapeo accion -> funcion del backend es un diccionario
-# de despacho (ACTION_DISPATCH), no lógica adentro del endpoint. El texto
-# de respuesta para intenciones "reconocidas-sin-capacidad" (action: [])
-# vive acá -- el router de MuadDib solo declara la intención, EcoPulse
-# escribe qué decirle al usuario.
+# Único archivo de EcoPulse que conoce tipos de intent_router (Decision,
+# RoutingResult, resolve, resolver_escaladas). Traduce cada Decision a un
+# ChatResponse:
+#   - Nivel 0/1 resuelto: cada token de `accion` se traduce a una llamada
+#     a la Herramienta registrada en muaddib_client/tools.py (parámetros
+#     simples derivados de `entidades`, nunca la Decision completa -- esa
+#     es la única función Decision-aware de esta traducción).
+#   - Reconocida-sin-capacidad (action: []): texto de respuestas.yaml.
+#   - Nivel 2 (escalada a Claude vía resolver_escaladas): usa
+#     `respuesta_texto`, o el texto genérico si vino `fallback_seguro`.
 # ===================================================
 import logging
 import random
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import yaml
 from fastapi import APIRouter, Request
 
 from app.models.chat import ChatRequest, ChatResponse, UIAction
+from app.muaddib_client.tools import Herramienta
 from app.services.clickhouse_nodes import obtener_nodos_actuales
-from app.services.clickhouse_analytics import get_24h_trends_clickhouse, get_monthly_historical_clickhouse, get_serie_por_sensor
-from app.services.news_service import fetch_live_cali_news
-from app.services.routing import CALI_PARKS
-from app.utils.node_metrics import ica_promedio_ciudad, nodo_mejor_ica, nodo_peor_ica
+from app.utils.ica import nivel_label_desde_ica
+from app.utils.node_metrics import nodo_peor_ica
 
+from intent_router.llm_engine import resolver_escaladas
 from intent_router.metrics import EventoDecision, hit_rate, log_decision
 from intent_router.router import Decision, resolve
 
@@ -47,244 +51,122 @@ _CAMINATA_TEXTS: list[str] = _RESPUESTAS["planes"]["caminata"]
 _BICI_TEXTS: list[str] = _RESPUESTAS["planes"]["bici"]
 _BORONDO_TEXTS: list[str] = _RESPUESTAS["planes"]["borondo"]
 
-_ICA_LEVEL_LABELS = (
-    (50, "Buena"),
-    (100, "Moderada"),
-    (150, "Dañina para grupos sensibles"),
-    (200, "Dañina"),
-    (300, "Muy Dañina"),
-    (500, "Peligrosa"),
-)
-
-
-def _nivel_label(ica: int) -> str:
-    for limite, etiqueta in _ICA_LEVEL_LABELS:
-        if ica <= limite:
-            return etiqueta
-    return "Peligrosa"
-
-
 # ──────────────────────────────────────────────────────────────
-# Handlers de acción real -- cada uno devuelve (texto, [UIAction]).
+# navigate/reply_greeting/show_quality_air: presentación, no datos.
+# Nivel 0/1 usa el texto rico de respuestas.yaml acá mismo (igual que
+# antes); tools.py registra versiones planas y factuales de estas mismas
+# 3 acciones para que Nivel 2 tenga algo que llamar si hace falta -- las
+# dos rutas son honestas, solo cambia el tono.
 # ──────────────────────────────────────────────────────────────
-
-def _handle_show_air_quality(decision: Decision) -> tuple[str, list[UIAction]]:
-    nodos = obtener_nodos_actuales()
-    ica = ica_promedio_ciudad(nodos)
-    reply = f"El ICA promedio de Cali ahora mismo es {ica} ({_nivel_label(ica)})."
-    return reply, [UIAction(type="navigate", payload={"page": "calidad-aire"})]
-
-
-def _handle_show_quality_air_region(decision: Decision) -> tuple[str, list[UIAction]]:
-    # Legacy: agent_core.py resolvía esto con NodeDataService.get_node_by_region(),
-    # un catálogo de 5 nodos inventados con ICA hardcodeado. No se reutiliza esa
-    # data falsa acá. entities.yaml declara el tipo "region" pero clickhouse_nodes.py
-    # no desagrega comuna/barrio (hardcodeado a "Cali") -- mismo hueco que
-    # comparar_calidad_aire, documentado en canonical.yaml.
-    #
-    # Fix 2026-09-20: esto antes citaba el ICA promedio de la CIUDAD junto al
-    # nombre "Pance", lo que se leía como si fuera un dato puntual de esa zona.
-    # No hay forma honesta de dar un número acá sin desagregación real -- no
-    # se cita ninguno, ni de ciudad ni inventado.
-    reply = f"{random.choice(_PANCE['frases'])} {_PANCE['aclaracion']}"
-    return reply, [UIAction(type="navigate", payload={"page": "mapa"})]
-
-
-def _handle_locate_sensor(decision: Decision) -> tuple[str, list[UIAction]]:
-    nodos = obtener_nodos_actuales()
-    activos = sum(1 for n in nodos if n.get("status") == "activo")
-    reply = (
-        f"Tengo {activos} sensores activos en la red Tángara -- todavía no puedo ubicar uno puntual "
-        "por nombre de barrio, así que te muestro todos en el mapa."
-    )
-    return reply, [UIAction(type="navigate", payload={"page": "mapa"})]
-
-
-def _handle_sensor_health(decision: Decision) -> tuple[str, list[UIAction]]:
-    nodos = obtener_nodos_actuales()
-    total = len(nodos)
-    activos = sum(1 for n in nodos if n.get("status") == "activo")
-    inactivos = total - activos
-    if inactivos == 0:
-        reply = f"Los {total} sensores de la red están activos ahora mismo."
-    else:
-        reply = (
-            f"{activos} de {total} sensores están activos; {inactivos} inactivo(s). "
-            "Todavía no puedo identificar cuál puntual por nombre."
-        )
-    return reply, [UIAction(type="navigate", payload={"page": "mapa"})]
-
-
-def _handle_health_advice(decision: Decision) -> tuple[str, list[UIAction]]:
-    nodos = obtener_nodos_actuales()
-    ica = ica_promedio_ciudad(nodos)
-    if ica <= 50:
-        reply = f"Sí, buen momento -- el ICA está en {ica} ({_nivel_label(ica)}). Condiciones ideales para salir."
-    elif ica <= 100:
-        reply = f"Se puede, con moderación -- el ICA está en {ica} ({_nivel_label(ica)}). Si sos sensible, reducí el esfuerzo."
-    else:
-        reply = f"Mejor esperá un poco -- el ICA está en {ica} ({_nivel_label(ica)}), por encima de lo recomendable para actividad intensa."
-    return reply, []
-
-
-def _handle_show_help(decision: Decision) -> tuple[str, list[UIAction]]:
-    reply = (
-        "El ICA (Índice de Calidad del Aire) resume la concentración de PM2.5 medida por la "
-        "red Tángara: sensores IoT distribuidos por Cali. Se calcula con la fórmula EPA / "
-        "Resolución 2254 del MinAmbiente, y los datos se guardan en tiempo real."
-    )
-    return reply, []
-
-
-def _handle_show_news(decision: Decision) -> tuple[str, list[UIAction]]:
-    noticias = fetch_live_cali_news()
-    if not noticias:
-        reply = "No encontré noticias ambientales recientes de Cali en este momento."
-    else:
-        primero = noticias[0]
-        reply = f"Encontré {len(noticias)} noticias ambientales recientes. La más reciente: \"{primero['title']}\" ({primero['source']})."
-    return reply, [UIAction(type="navigate", payload={"page": "noticias"})]
-
-
-def _handle_green_zones(decision: Decision) -> tuple[str, list[UIAction]]:
-    nombres = [p["name"] for p in CALI_PARKS[:5]]
-    reply = f"Tengo {len(CALI_PARKS)} parques y zonas verdes curadas en Cali, por ejemplo: {', '.join(nombres)}."
-    return reply, [UIAction(type="navigate", payload={"page": "mapa"})]
-
-
-def _handle_show_trend(decision: Decision) -> tuple[str, list[UIAction]]:
-    periodo_vals = decision.entidades.get("periodo", ["24h"])
-    periodo = periodo_vals[0] if periodo_vals else "24h"
-
-    if periodo == "mensual":
-        datos = get_monthly_historical_clickhouse()
-        medidos = [d for d in datos if d.get("ica") is not None]
-        if medidos:
-            prom = round(sum(d["ica"] for d in medidos) / len(medidos))
-            reply = f"El promedio mensual de ICA este año es {prom}, con {len(medidos)} meses medidos."
-        else:
-            reply = "Todavía no hay datos mensuales medidos para este año."
-    else:
-        datos = get_24h_trends_clickhouse("24h")
-        valores = datos.get("green", [])
-        if valores:
-            actual = valores[-1]
-            reply = f"El ICA de las últimas 24 horas fue de {min(valores)} a {max(valores)}; ahora mismo está en {actual}."
-        else:
-            reply = "Todavía no hay datos suficientes de las últimas 24 horas."
-
-    return reply, [UIAction(type="navigate", payload={"page": "tendencias"})]
-
-
-def _handle_sensor_series(decision: Decision) -> tuple[str, list[UIAction]]:
-    datos = get_serie_por_sensor()
-    sensores = datos.get("sensors", [])
-    if not sensores:
-        reply = "Todavía no hay suficientes lecturas por sensor en las últimas 24 horas."
-    else:
-        reply = f"Tengo la serie de PM2.5 de las últimas 24 horas para {len(sensores)} sensores individuales."
-    return reply, [UIAction(type="navigate", payload={"page": "tendencias"})]
-
-
-def _handle_node_ranking(decision: Decision) -> tuple[str, list[UIAction]]:
-    nodos = obtener_nodos_actuales()
-    peor = nodo_peor_ica(nodos)
-    mejor = nodo_mejor_ica(nodos)
-    if not peor:
-        reply = "Ningún sensor está midiendo un ICA válido ahora mismo."
-    else:
-        reply = f"El nodo con peor aire ahora mismo es {peor['id']}, con un ICA de {peor['measurements']['ica']}."
-        if mejor and mejor["id"] != peor["id"]:
-            reply += f" El de mejor aire es {mejor['id']}, con un ICA de {mejor['measurements']['ica']}."
-    return reply, [UIAction(type="navigate", payload={"page": "mapa"})]
-
-
-def _handle_greeting(decision: Decision) -> tuple[str, list[UIAction]]:
-    return random.choice(_GREETING_TEXTS), []
-
 
 def _texto_nodo_mas_contaminado() -> str:
-    nodos = obtener_nodos_actuales()
-    peor = nodo_peor_ica(nodos)
+    peor = nodo_peor_ica(obtener_nodos_actuales())
     if not peor:
         return "Ningún sensor está midiendo un ICA válido ahora mismo."
-    return f"El nodo con mayor contaminación ahora mismo es {peor['id']}, con un ICA de {peor['measurements']['ica']} ({_nivel_label(peor['measurements']['ica'])}). Te llevo al mapa."
+    return f"El nodo con mayor contaminación ahora mismo es {peor['id']}, con un ICA de {peor['measurements']['ica']} ({nivel_label_desde_ica(peor['measurements']['ica'])}). Te llevo al mapa."
 
 
-# Nivel 0 (rules_nivel0.yaml): intención -> (página destino, texto o generador).
-# Texto real recuperado de agent_core.py o generado con datos reales; None cuando
-# el texto ya lo dio otro fragmento (caso consultar_pronostico, ver NO_CAPACIDAD).
-_NIVEL0_NAVIGATE: dict[str, tuple[str, Any]] = {
-    "navegar_mapa": ("mapa", "¡De una! Te dirijo al mapa interactivo de monitoreo ambiental."),
-    "navegar_inicio": ("inicio", "Volviendo a la pantalla principal de EcoPulse."),
-    "consultar_nodo_mas_contaminado": ("mapa", _texto_nodo_mas_contaminado),
-    "consultar_ruta_saludable": ("mapa", "¡La Ruta Saludable es mi especialidad! Abrí el mapa para trazar el camino con menor ICA desde tu ubicación."),
-    "consultar_plan_caminata": ("mapa", lambda: random.choice(_CAMINATA_TEXTS)),
-    "consultar_plan_bici": ("mapa", lambda: random.choice(_BICI_TEXTS)),
-    "consultar_plan_borondo": ("mapa", lambda: random.choice(_BORONDO_TEXTS)),
-    # PARCHE TEMPORAL anotado (no diseño): rules_nivel0.yaml todavía declara
-    # action: ["navigate"] para consultar_pronostico, mientras canonical.yaml
-    # (la fuente de verdad para esta intención) dice action: []. El choque real
-    # se reportó a MuadDib para arreglarse en el origen (corregir
-    # rules_nivel0.yaml + validación cruzada en config_loader.py). Mientras
-    # tanto, si Nivel 0 dispara esta rama, el texto honesto ya lo dio
-    # NO_CAPACIDAD -- acá solo se aprovecha el navigate real como bonus.
-    "consultar_pronostico": ("tendencias", None),
+_PAGINA_POR_INTENCION: dict[str, str] = {
+    "navegar_mapa": "mapa",
+    "navegar_inicio": "inicio",
+    "consultar_nodo_mas_contaminado": "mapa",
+    "consultar_ruta_saludable": "mapa",
+    "consultar_plan_caminata": "mapa",
+    "consultar_plan_bici": "mapa",
+    "consultar_plan_borondo": "mapa",
+}
+
+_TEXTO_NAVEGACION: dict[str, Any] = {
+    "navegar_mapa": "¡De una! Te dirijo al mapa interactivo de monitoreo ambiental.",
+    "navegar_inicio": "Volviendo a la pantalla principal de EcoPulse.",
+    "consultar_nodo_mas_contaminado": _texto_nodo_mas_contaminado,
+    "consultar_ruta_saludable": "¡La Ruta Saludable es mi especialidad! Abrí el mapa para trazar el camino con menor ICA desde tu ubicación.",
+    "consultar_plan_caminata": lambda: random.choice(_CAMINATA_TEXTS),
+    "consultar_plan_bici": lambda: random.choice(_BICI_TEXTS),
+    "consultar_plan_borondo": lambda: random.choice(_BORONDO_TEXTS),
+}
+
+# Acción -> página de UIAction, para las herramientas de datos reales
+# (tools.py). None = sin UIAction (igual que antes del refactor de Nivel 2).
+_PAGINA_POR_ACCION: dict[str, str | None] = {
+    "show_air_quality": "calidad-aire",
+    "locate_sensor": "mapa",
+    "get_sensor_health": "mapa",
+    "get_health_activity_advice": None,
+    "show_help": None,
+    "show_news": "noticias",
+    "show_green_zones": "mapa",
+    "show_trend": "tendencias",
+    "show_sensor_series": "tendencias",
+    "show_node_ranking": "mapa",
 }
 
 
-def _handle_navigate(decision: Decision) -> tuple[str, list[UIAction]]:
-    entrada = _NIVEL0_NAVIGATE.get(decision.intencion)
-    if entrada is None:
+def _kwargs_para_herramienta(nombre: str, decision: Decision) -> dict[str, Any]:
+    """Deriva los parámetros simples que necesita cada Herramienta a partir de entidades -- nunca la Decision completa."""
+    if nombre == "show_trend":
+        valores = decision.entidades.get("periodo") or ["24h"]
+        return {"periodo": valores[0]}
+    return {}
+
+
+def _texto_y_ui_para_accion(
+    nombre: str, decision: Decision, herramientas: dict[str, Herramienta]
+) -> tuple[str, list[UIAction]]:
+    """Traduce UN token de accion a (texto, UIActions) -- la única función que mezcla Decision con las Herramientas."""
+    if nombre == "reply_greeting":
+        return random.choice(_GREETING_TEXTS), []
+
+    if nombre == "show_quality_air":
+        reply = f"{random.choice(_PANCE['frases'])} {_PANCE['aclaracion']}"
+        return reply, [UIAction(type="navigate", payload={"page": "mapa"})]
+
+    if nombre == "navigate":
+        pagina = _PAGINA_POR_INTENCION.get(decision.intencion, "mapa")
+        texto = _TEXTO_NAVEGACION.get(decision.intencion)
+        reply = texto() if callable(texto) else (texto or "")
+        return reply, [UIAction(type="navigate", payload={"page": pagina})]
+
+    herramienta = herramientas.get(nombre)
+    if herramienta is None:
+        logger.warning("chat: accion '%s' sin Herramienta registrada", nombre)
         return "", []
-    pagina, texto = entrada
-    if texto is None:
-        reply = ""
-    elif callable(texto):
-        reply = texto()
-    else:
-        reply = texto
-    return reply, [UIAction(type="navigate", payload={"page": pagina})]
+
+    reply = herramienta.funcion(**_kwargs_para_herramienta(nombre, decision))
+    pagina = _PAGINA_POR_ACCION.get(nombre)
+    ui = [UIAction(type="navigate", payload={"page": pagina})] if pagina else []
+    return reply, ui
 
 
-# ──────────────────────────────────────────────────────────────
-# Diccionario de despacho accion -> handler. focus_node y enable_tool
-# quedan deliberadamente sin handler: sin soporte real en frontend ni
-# backend, cablearlos sería teatro (UIAction que no hace nada).
-# ──────────────────────────────────────────────────────────────
-ACTION_DISPATCH: dict[str, Callable[[Decision], tuple[str, list[UIAction]]]] = {
-    "show_air_quality": _handle_show_air_quality,
-    "show_quality_air": _handle_show_quality_air_region,
-    "locate_sensor": _handle_locate_sensor,
-    "get_sensor_health": _handle_sensor_health,
-    "get_health_activity_advice": _handle_health_advice,
-    "show_help": _handle_show_help,
-    "show_news": _handle_show_news,
-    "show_green_zones": _handle_green_zones,
-    "show_trend": _handle_show_trend,
-    "show_sensor_series": _handle_sensor_series,
-    "show_node_ranking": _handle_node_ranking,
-    "navigate": _handle_navigate,
-    "reply_greeting": _handle_greeting,
-}
+def _procesar_decision_nivel2(decision: Decision) -> tuple[str, list[UIAction]]:
+    """Nivel 2 no produce UIAction (resolver_escaladas no las genera, es solo lectura vía texto)."""
+    if decision.herramienta_pendiente is not None:
+        # No debería pasar nunca: las 13 herramientas registradas son todas
+        # efecto_real=False. Si pasa, es una herramienta nueva mal declarada.
+        logger.error(
+            "chat: Nivel 2 pidió confirmación para una herramienta con efecto_real -- no hay ninguna registrada así: %s",
+            decision.herramienta_pendiente,
+        )
+        return GENERIC_ESCALATION_REPLY, []
+
+    if decision.accion == ("fallback_seguro",):
+        logger.warning("chat: Nivel 2 fallback_seguro -- motivos=%s", decision.motivos_escalada)
+        return GENERIC_ESCALATION_REPLY, []
+
+    if decision.respuesta_texto:
+        return decision.respuesta_texto, []
+
+    return GENERIC_ESCALATION_REPLY, []
 
 
-def _procesar_decision(decision: Decision) -> tuple[str, list[UIAction]]:
+def _procesar_decision(decision: Decision, herramientas: dict[str, Herramienta]) -> tuple[str, list[UIAction]]:
+    if decision.nivel == 2:
+        return _procesar_decision_nivel2(decision)
+
     if decision.intencion in NO_CAPACIDAD:
-        fragmentos = [NO_CAPACIDAD[decision.intencion]]
-        acciones: list[UIAction] = []
-        # Bonus: si además trae una acción real (el navigate stale de Nivel 0
-        # para consultar_pronostico), se despacha igual -- ver parche anotado
-        # en _NIVEL0_NAVIGATE.
-        for token in decision.accion:
-            handler = ACTION_DISPATCH.get(token)
-            if handler is None:
-                continue
-            _, ui = handler(decision)
-            acciones.extend(ui)
-        return " ".join(fragmentos), acciones
+        return NO_CAPACIDAD[decision.intencion], []
 
-    if decision.nivel == 2 or decision.intencion is None:
+    if decision.intencion is None:
         return GENERIC_ESCALATION_REPLY, []
 
     if not decision.accion:
@@ -294,13 +176,10 @@ def _procesar_decision(decision: Decision) -> tuple[str, list[UIAction]]:
         )
         return GENERIC_ESCALATION_REPLY, []
 
-    fragmentos = []
-    acciones = []
+    fragmentos: list[str] = []
+    acciones: list[UIAction] = []
     for token in decision.accion:
-        handler = ACTION_DISPATCH.get(token)
-        if handler is None:
-            continue  # focus_node, enable_tool: sin handler a propósito
-        texto, ui = handler(decision)
+        texto, ui = _texto_y_ui_para_accion(token, decision, herramientas)
         if texto:
             fragmentos.append(texto)
         acciones.extend(ui)
@@ -316,9 +195,9 @@ def _procesar_decision(decision: Decision) -> tuple[str, list[UIAction]]:
 # eso ya lo tiene `_eventos` adentro de intent_router.metrics, y llevar la
 # misma cuenta por duplicado en el cliente es exactamente el patrón que ya
 # se había consolidado en embeddings.py para que dos mediciones de lo mismo
-# no puedan divergir. Si hace falta desglose por nivel/intención, el arreglo
-# es que MuadDib exponga un accessor público sobre su propio acumulador
-# (reportado a la sesión de MuadDib) -- no recalcularlo acá.
+# no puedan divergir. MuadDib ya expone desglose_por_nivel()/
+# desglose_por_intencion() sobre su propio acumulador -- pendiente de
+# sumar acá si hace falta, no recalculado en este archivo.
 #
 # `total` sí se cuenta acá: es un entero simple incrementado en el mismo
 # call site que log_decision(), no una métrica derivada que pueda leerse
@@ -326,12 +205,13 @@ def _procesar_decision(decision: Decision) -> tuple[str, list[UIAction]]:
 #
 # hit_rate() mide tasa de RESOLUCIÓN LOCAL (no escaló a Nivel 2), no tasa de
 # ACIERTO -- una decisión resuelta mal en Nivel 0/1 cuenta igual que una
-# resuelta bien. No hay manera automática de medir accierto sin un corpus
-# etiquetado a mano contra la intención esperada.
+# resuelta bien.
 #
-# No se guarda el texto de los mensajes escalados: es un endpoint sin auth,
-# y el texto libre del usuario puede incluir su barrio u otro dato
-# identificable. Solo conteos.
+# No se guarda el texto de los mensajes escalados ni de las respuestas de
+# Nivel 2, ni tokens/api_key: es un endpoint sin auth, y el texto libre
+# del usuario puede incluir su barrio u otro dato identificable. Solo
+# conteos -- eso mismo es lo que ya loguea log_decision() del lado del
+# servidor (nunca la api_key, nunca vive en la Decision).
 # ──────────────────────────────────────────────────────────────
 _total_decisiones = 0
 
@@ -355,10 +235,13 @@ async def process_chat(request: ChatRequest, http_request: Request) -> ChatRespo
     inicio = time.perf_counter()
     try:
         resultado = resolve(request.message, motor.config, motor.canonical_data)
+        resultado = await resolver_escaladas(resultado, motor.herramientas, motor.config, motor.api_key)
     except Exception as exc:
-        logger.error("chat: resolve() tiró una excepción inesperada: %s", exc)
+        logger.error("chat: resolve()/resolver_escaladas() tiró una excepción inesperada: %s", exc)
         return ChatResponse(reply=GENERIC_ESCALATION_REPLY, ai_actions=[])
     latencia_ms = (time.perf_counter() - inicio) * 1000
+
+    herramientas_por_nombre = {h.name: h for h in motor.herramientas}
 
     fragmentos: list[str] = []
     acciones: list[UIAction] = []
@@ -366,7 +249,7 @@ async def process_chat(request: ChatRequest, http_request: Request) -> ChatRespo
     for decision in resultado.decisiones:
         log_decision(EventoDecision(decision=decision, latencia_ms=latencia_ms))
         _total_decisiones += 1
-        texto, ui = _procesar_decision(decision)
+        texto, ui = _procesar_decision(decision, herramientas_por_nombre)
         if texto:
             fragmentos.append(texto)
         acciones.extend(ui)
