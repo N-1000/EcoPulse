@@ -5,8 +5,9 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.db.clickhouse import ping
@@ -19,9 +20,17 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Config y modelo de MuadDib se cargan una sola vez acá, no por request.
-    # iniciar_router() deja propagar ConfigError (config rota => no arranca)
-    # pero nunca deja que una falla de carga del modelo tumbe el servicio.
-    app.state.muaddib_router = iniciar_router()
+    # Si CUALQUIER cosa de MuadDib falla al cargar (config rota, esquema de
+    # herramienta inválido, acción declarada sin herramienta registrada,
+    # etc.), se deshabilita SOLO el chat -- el resto del servicio (mapa,
+    # tendencias, noticias) no depende de MuadDib y tiene que levantar
+    # igual. chat.py ya maneja app.state.muaddib_router is None con una
+    # respuesta degradada, no revienta.
+    try:
+        app.state.muaddib_router = iniciar_router()
+    except Exception:
+        logger.exception("MuadDib no pudo inicializar -- el chat queda deshabilitado, el resto del servicio sigue")
+        app.state.muaddib_router = None
     yield
 
 
@@ -61,3 +70,26 @@ def health() -> dict[str, object]:
         "clickhouse": "conectado" if db_ok else "sin conexión",
         "database": settings.clickhouse_database,
     }
+
+
+@app.get("/health/ready", tags=["salud"])
+def readiness(request: Request) -> JSONResponse:
+    """
+    Readiness de MuadDib (el chat), no solo si el proceso levantó.
+
+    Uvicorn no acepta conexiones hasta que el lifespan termina, así que
+    esto no cubre una carrera contra requests durante esos ~9s de arranque
+    en este proceso único -- pero sí le da al harness de carga (o a un
+    orquestador con múltiples workers) una señal confiable para esperar
+    antes de mandar tráfico real, y sirve para ver en cualquier momento
+    si el chat quedó degradado o deshabilitado, no solo al arrancar.
+
+    503 si el modelo de embeddings no cargó (Nivel 1 inactivo) o si
+    MuadDib no inicializó -- 200 solo cuando está completamente listo.
+    """
+    motor = getattr(request.app.state, "muaddib_router", None)
+    if motor is None:
+        return JSONResponse(status_code=503, content={"ready": False, "muaddib": "deshabilitado"})
+    if motor.canonical_data is None:
+        return JSONResponse(status_code=503, content={"ready": False, "muaddib": "degradado (solo Nivel 0)"})
+    return JSONResponse(status_code=200, content={"ready": True, "muaddib": "listo"})
