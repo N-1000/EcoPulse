@@ -1,0 +1,6 @@
+# Dependencias solo para correr la prueba de carga -- no van en el
+# requirements.txt de producción (backend/requirements.txt), instalar
+# aparte en el mismo venv del backend cuando haga falta correr esto:
+#   pip install -r loadtest/requirements.txt
+locust==2.46.6
+psutil==7.2.2
