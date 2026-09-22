@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
@@ -142,22 +143,61 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
 # TTL configurable por CACHE_TTL_SECONDS (Settings.cache_ttl_seconds,
 # existía declarado pero sin ningún consumidor); default 45s, a mitad del
 # rango pedido (30-60s).
+#
+# Estampida encontrada en la prueba de carga 2026-09-22 (p95 llegaba a
+# 4000ms a 50 usuarios concurrentes, saturando el threadpool de FastAPI):
+# muchos requests veían la caché vencida a la vez y todos refrescaban en
+# paralelo. Fix: stale-while-revalidate. Con caché tibia pero vencida, se
+# sigue sirviendo el dato viejo mientras UN SOLO hilo de fondo refresca
+# -- para un dato que cambia por minuto, servir uno de hace TTL segundos
+# es honesto, no hace falta que nadie espere. Con caché vacía (arranque en
+# frío) sí hay que esperar: ahí el lock evita que todos golpeen a la vez,
+# porque no hay ningún dato viejo que servir.
+_cache_lock = threading.Lock()
+_refresh_en_curso = False
 _CACHE_NODOS: Optional[tuple[float, List[Dict[str, Any]]]] = None
 
 
 def obtener_nodos_actuales() -> List[Dict[str, Any]]:
-    """Nodos reales de ClickHouse con fallback a datos mock, cacheados en memoria."""
-    global _CACHE_NODOS
+    """Nodos reales de ClickHouse con fallback a datos mock, cacheados en memoria (stale-while-revalidate)."""
+    global _CACHE_NODOS, _refresh_en_curso
     now_ts = time.time()
     ttl = get_settings().cache_ttl_seconds
-    if _CACHE_NODOS is not None:
+
+    with _cache_lock:
+        if _CACHE_NODOS is None:
+            # Arranque en frío: nadie tiene nada que servir. Refrescar
+            # sosteniendo el lock a propósito -- los demás hilos que
+            # lleguen mientras tanto quedan esperando acá, no golpeando
+            # todos a la vez a ClickHouse.
+            resultado = _obtener_nodos_sin_cache()
+            _CACHE_NODOS = (now_ts, resultado)
+            return resultado
+
         cached_time, cached_data = _CACHE_NODOS
         if now_ts - cached_time < ttl:
             return cached_data
 
-    resultado = _obtener_nodos_sin_cache()
-    _CACHE_NODOS = (now_ts, resultado)
-    return resultado
+        # Caché vencida pero con dato: servirlo igual, y disparar UN solo
+        # refresh en background (no bloquea, no compite por el threadpool
+        # de requests -- es un hilo propio).
+        if not _refresh_en_curso:
+            _refresh_en_curso = True
+            threading.Thread(target=_refrescar_cache_en_background, daemon=True).start()
+        return cached_data
+
+
+def _refrescar_cache_en_background() -> None:
+    global _CACHE_NODOS, _refresh_en_curso
+    try:
+        resultado = _obtener_nodos_sin_cache()
+        with _cache_lock:
+            _CACHE_NODOS = (time.time(), resultado)
+    except Exception:
+        logger.exception("obtener_nodos_actuales: falló el refresh en background -- se sigue sirviendo el dato viejo")
+    finally:
+        with _cache_lock:
+            _refresh_en_curso = False
 
 
 def _obtener_nodos_sin_cache() -> List[Dict[str, Any]]:
