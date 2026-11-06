@@ -8,8 +8,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 from app.core.config import get_settings
+from app.core.limiter import limiter
 from app.db.clickhouse import ping
 from app.muaddib_client.loader import iniciar_router
 from app.routers import meta, nodes, routing, air_quality, chat, news
@@ -42,6 +45,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.include_router(chat.router)
 
 settings = get_settings()
@@ -54,7 +60,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(meta.router)
+if settings.enable_dev_endpoints:
+    logger.warning("ENABLE_DEV_ENDPOINTS=true -- /api/meta/* expuesto (navegador de esquema de ClickHouse, sin auth)")
+    app.include_router(meta.router)
 app.include_router(nodes.router)
 app.include_router(routing.router)
 app.include_router(air_quality.router)
@@ -86,10 +94,22 @@ def readiness(request: Request) -> JSONResponse:
 
     503 si el modelo de embeddings no cargó (Nivel 1 inactivo) o si
     MuadDib no inicializó -- 200 solo cuando está completamente listo.
+
+    nivel2_configurado: si hay ANTHROPIC_API_KEY cargada. Antes de esto,
+    sin API key el chat daba 200/ready=True igual (Nivel 0/1 funcionan),
+    pero el 100% de las escaladas caían en fallback_seguro sin que ningún
+    chequeo de salud lo viera -- hallazgo 2 del reporte interno del corpus de chat (no publicado).
     """
     motor = getattr(request.app.state, "muaddib_router", None)
     if motor is None:
-        return JSONResponse(status_code=503, content={"ready": False, "muaddib": "deshabilitado"})
+        return JSONResponse(
+            status_code=503, content={"ready": False, "muaddib": "deshabilitado", "nivel2_configurado": False}
+        )
     if motor.canonical_data is None:
-        return JSONResponse(status_code=503, content={"ready": False, "muaddib": "degradado (solo Nivel 0)"})
-    return JSONResponse(status_code=200, content={"ready": True, "muaddib": "listo"})
+        return JSONResponse(
+            status_code=503,
+            content={"ready": False, "muaddib": "degradado (solo Nivel 0)", "nivel2_configurado": bool(motor.api_key)},
+        )
+    return JSONResponse(
+        status_code=200, content={"ready": True, "muaddib": "listo", "nivel2_configurado": bool(motor.api_key)}
+    )

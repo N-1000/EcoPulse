@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Circle, MessageCircleQuestion, SendHorizontal, X } from 'lucide-react';
 import EarthAvatar from '../common/EarthAvatar';
-import type { Message, PageId, SuggestedQuestion, UIAction } from '../../types';
+import type { Message, PageId, SuggestedOption, SuggestedQuestion, UIAction } from '../../types';
 
 export interface QuickOption {
   label: string;
@@ -68,7 +68,13 @@ const TypingIndicator = ({ visible }: { visible: boolean }) => {
   );
 };
 
-const MessageBubble = ({ message }: { message: Message }) => {
+const MessageBubble = ({
+  message,
+  onOptionClick,
+}: {
+  message: Message;
+  onOptionClick: (query: string) => void;
+}) => {
   const isAI = message.sender === 'ecopulse-ai';
 
   if (isAI) {
@@ -82,6 +88,25 @@ const MessageBubble = ({ message }: { message: Message }) => {
           <span className="text-[10px] text-gray-400 mt-1 ml-1">
             {formatTime(message.timestamp)}
           </span>
+
+          {/* No se entendió el mensaje -- en vez de dejar a la persona sin
+              salida, se sugieren preguntas que SÍ resuelven (ver
+              test_suggest_options.py del backend: cada una está validada
+              contra Nivel 0/1, nunca cae en este mismo fallback). */}
+          {message.suggestedOptions && message.suggestedOptions.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
+              {message.suggestedOptions.map(opt => (
+                <button
+                  key={opt.query}
+                  onClick={() => onOptionClick(opt.query)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:border-lima hover:text-noche hover:bg-lima/10 transition-all"
+                >
+                  {opt.emoji && <span>{opt.emoji}</span>}
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -151,19 +176,30 @@ const EcopulseChat = ({ onClose, currentPage = 'inicio', onAction, onNavigate }:
       const { askChatbot } = await import('../../services/api');
       const res = await askChatbot(text.trim(), currentPage);
 
+      // suggest_options se extrae acá y se adjunta al mensaje -- se
+      // renderiza como botones debajo de ESTE mensaje puntual (ver el
+      // loop de render más abajo), no es un side-effect genérico como
+      // navigate.
+      const suggestOptionsAction = res.aiActions?.find(a => a.type === 'suggest_options');
+      const suggestedOptions: SuggestedOption[] | undefined =
+        suggestOptionsAction?.payload?.options as SuggestedOption[] | undefined;
+
       const aiMsg: Message = {
         id: generateId(),
         sender: 'ecopulse-ai',
         text: res.reply,
         timestamp: new Date(),
         aiActions: res.aiActions,
+        suggestedOptions,
       };
 
       setMessages(prev => [...prev, aiMsg]);
 
-      // Si la IA envió acciones para la interfaz
+      // Resto de acciones para la interfaz (navigate, etc.) -- suggest_options
+      // ya se manejó arriba, no pasa por acá.
       if (res.aiActions && res.aiActions.length > 0) {
         res.aiActions.forEach(action => {
+          if (action.type === 'suggest_options') return;
           if (action.type === 'navigate' && action.payload?.page && onNavigate) {
             onNavigate(action.payload.page);
             return;
@@ -243,7 +279,7 @@ const EcopulseChat = ({ onClose, currentPage = 'inicio', onAction, onNavigate }:
       {/* ---- Historial de mensajes ---- */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.map(msg => (
-          <MessageBubble key={msg.id} message={msg} />
+          <MessageBubble key={msg.id} message={msg} onOptionClick={sendUserMessage} />
         ))}
 
         {/* Preguntas sugeridas (solo al inicio) */}

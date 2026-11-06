@@ -176,7 +176,7 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
   const headerColor = isCo2Node ? CO2_BLUE : color;
 
   return (
-    <div className="absolute top-4 left-4 z-[400] w-[285px] animate-slide-up bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden border border-gray-150 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+    <div className="absolute top-4 left-4 right-4 sm:right-auto z-[400] w-auto sm:w-[285px] max-w-[calc(100vw-2rem)] animate-slide-up bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden border border-gray-150 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${headerColor}15, ${headerColor}04)`, padding: '16px 18px 14px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
         <div className="flex items-start justify-between gap-2">

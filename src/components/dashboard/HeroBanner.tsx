@@ -5,13 +5,18 @@
 // ===================================================
 import { useAirQuality } from '../../hooks/useAirQuality';
 import { getIcaLevel } from '../../utils/airQuality';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, MessageCircle } from 'lucide-react';
 
 interface HeroBannerProps {
   onExploreMap: () => void;
+  /** Entrada al chat desde el Hero (feedback de diseño: el asistente tiene
+   * que ser protagonista desde el primer vistazo, no solo un botón flotante
+   * que aparece después de scrollear). Opcional porque el botón flotante
+   * sigue siendo el camino principal si no se pasa. */
+  onOpenChat?: () => void;
 }
 
-const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
+const HeroBanner = ({ onExploreMap, onOpenChat }: HeroBannerProps) => {
   const { metrics } = useAirQuality();
   const icaInfo = getIcaLevel(metrics.icaGeneral);
 
@@ -36,7 +41,7 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#F2E8D5] via-[#F2E8D5]/65 to-transparent pointer-events-none" />
 
       {/* ── Contenido central editorial a pantalla completa ── */}
-      <div className="relative z-10 w-full max-w-[1380px] mx-auto flex-1 flex flex-col justify-between items-center text-center px-4 sm:px-6 pt-16 pb-8">
+      <div className="relative z-10 w-full max-w-[1380px] mx-auto flex-1 flex flex-col justify-between items-center text-center px-4 sm:px-6 pt-16 pb-24 sm:pb-8">
 
         {/* Encabezado superior */}
         <div className="flex flex-col items-center max-w-3xl mt-2">
@@ -103,6 +108,18 @@ const HeroBanner = ({ onExploreMap }: HeroBannerProps) => {
           >
             Calidad del aire {icaInfo.label.toLowerCase()} en Santiago de Cali
           </div>
+
+          {/* Entrada al chat desde el Hero -- ver comentario de onOpenChat arriba */}
+          {onOpenChat && (
+            <button
+              onClick={onOpenChat}
+              className="group inline-flex items-center gap-2 px-5 py-2 rounded-full bg-lima hover:bg-lima-dark text-noche text-sm font-bold shadow-lg transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+            >
+              <MessageCircle size={16} className="flex-shrink-0" />
+              Pregúntale al aire de Cali
+              <span className="group-hover:translate-x-1 transition-transform">→</span>
+            </button>
+          )}
         </div>
 
         {/* ── Pie del Hero: Indicadores y botón de scroll ── */}

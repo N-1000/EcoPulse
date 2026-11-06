@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     # --- IA (opcional, para el chatbot) ---
     anthropic_api_key: str | None = None
 
+    # --- Endpoints de desarrollo ---
+    # /api/meta/* (navegador de esquema de ClickHouse) y /api/chat/metrics
+    # (hit_rate del router). Default False: apagados de verdad -- no un
+    # header compartido comparado a mano, que da sensación de protección
+    # sin serlo. Poner ENABLE_DEV_ENDPOINTS=true solo en dev local.
+    enable_dev_endpoints: bool = False
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Convierte la cadena separada por comas en una lista limpia."""

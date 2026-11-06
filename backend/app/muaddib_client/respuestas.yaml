@@ -19,6 +19,41 @@ escalada:
     No estoy seguro de haber entendido bien. ¿Podés reformular la pregunta
     sobre la calidad del aire en Cali?
 
+# Botones de sugerencia que chat.py agrega (UIAction type="suggest_options")
+# SOLO cuando el reply final es exactamente el genérico de arriba -- si ya
+# hay una respuesta real, no hace falta sugerir nada más.
+#
+# intencion_esperada no se usa en runtime (chat.py solo manda label/emoji/
+# query al frontend) -- es lo que valida
+# tests/test_suggest_options.py::test_opcion_sugerida_resuelve_en_nivel_0_o_1_con_la_intencion_esperada
+# contra cada query, para que una opción sugerida nunca pueda, ella misma,
+# caer en fallback. Si se agrega una opción nueva acá, ese test la
+# recorre automáticamente (está parametrizado sobre esta lista).
+opciones_sugeridas:
+  - label: "Calidad del aire ahora"
+    emoji: "🌬️"
+    query: "como esta el aire hoy"
+    intencion_esperada: consultar_calidad_aire
+  - label: "Tendencia últimas 24h"
+    emoji: "📈"
+    query: "como ha variado el aire en las ultimas 24 horas"
+    intencion_esperada: consultar_tendencia_calidad_aire
+  - label: "Noticias ambientales"
+    emoji: "📰"
+    query: "hay noticias sobre el medio ambiente en cali"
+    intencion_esperada: consultar_noticias_ambientales
+  - label: "Zonas verdes"
+    emoji: "🌳"
+    query: "muestrame las zonas verdes de cali"
+    intencion_esperada: consultar_parques_zonas_verdes
+
+# Rechazos que pasan ANTES de tocar el router -- no son una intención mal
+# resuelta, es un mensaje que ni siquiera se procesa (ver chat.py).
+validacion:
+  mensaje_muy_largo: >-
+    Tu mensaje es demasiado largo -- probá con una pregunta más corta
+    sobre la calidad del aire en Cali.
+
 # Reconocida-sin-capacidad: canonical.yaml declara action: [] para estas
 # intenciones a propósito (no hay auth/sesión, no hay endpoint, o el dato
 # está bloqueado). El router solo reconoce la intención; el texto vive acá.
@@ -41,6 +76,18 @@ no_capacidad:
     Todavía no puedo configurar alertas -- EcoPulse no maneja cuentas de usuario.
   agregar_sensor: >-
     Todavía no tengo favoritos ni watchlist -- EcoPulse no maneja cuentas de usuario.
+
+# Aclaración genérica: se pega (chat.py) a la respuesta de cualquier accion
+# declarada en config.yaml::acciones_sin_desagregacion cuando el usuario
+# mencionó una zona o un sensor puntual -- el dato que se dio es general de
+# toda la red, no de lo que se nombró. Ver el reporte interno del corpus de chat (no publicado).
+no_desagregado:
+  region: >-
+    Ojo: esto es el dato general de toda Cali, todavía no tengo el aire
+    desagregado por zona puntual.
+  sensor: >-
+    Ojo: esto es el estado general de la red, todavía no puedo buscar un
+    sensor puntual por nombre.
 
 # Contenido real, recuperado del agent_core.py original (borrado, ver
 # git show 9e2b481eabf7c8b2ecf01a7c2256ae7123a48cc0~1) -- no inventado.

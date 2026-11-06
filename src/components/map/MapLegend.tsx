@@ -12,7 +12,7 @@ interface MapLegendProps {
 
 export const MapLegend = ({ routeResult }: MapLegendProps) => {
   return (
-    <div className="absolute bottom-14 right-4 z-[400] bg-white/90 backdrop-blur-md border border-gray-150 rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.05)] min-w-[180px]">
+    <div className="hidden sm:block absolute bottom-14 right-4 z-[400] bg-white/90 backdrop-blur-md border border-gray-150 rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.05)] min-w-[180px]">
       {/* Sección ICA */}
       <p className="text-[10px] font-black uppercase tracking-wider mb-2.5 text-gray-400">
         Calidad del Aire · ICA

@@ -22,7 +22,14 @@ const scrollToSection = (id: string) => {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 };
 
-const HomePage = () => {
+interface HomePageProps {
+  /** Abre el panel de chat -- controlado por Layout.tsx. Se usa para la
+   * entrada al chat desde el Hero (feedback de diseño: el asistente debe
+   * ser accesible desde el primer vistazo, no solo desde el botón flotante). */
+  onOpenChat?: () => void;
+}
+
+const HomePage = ({ onOpenChat }: HomePageProps) => {
   const { metrics } = useAirQuality();
   const ica = metrics.icaGeneral;
   const isGood = ica <= 50;
@@ -66,10 +73,10 @@ const HomePage = () => {
   ];
 
   return (
-    <div id="sec-inicio" className="min-h-full flex flex-col bg-[#F2E8D5] overflow-x-hidden font-sans">
+    <div id="sec-inicio" className="min-h-full flex flex-col bg-hueso overflow-x-hidden font-sans">
 
       {/* ── HERO EDITORIAL INMERSIVO ── */}
-      <HeroBanner onExploreMap={() => scrollToSection('sec-mapa')} />
+      <HeroBanner onExploreMap={() => scrollToSection('sec-mapa')} onOpenChat={onOpenChat} />
 
       {/* ── 1. DATOS EN VIVO & DIAGNÓSTICO CIUDADANO ── */}
       <section id="sec-datos" className="w-full max-w-[1380px] mx-auto px-4 sm:px-6 py-24 border-t border-[#DDD5C4]/60">
@@ -83,7 +90,7 @@ const HomePage = () => {
             <h2
               className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A1A18] tracking-tight mb-4"
             >
-              El pulso del aire, segundo a segundo.
+              El pulso del aire, minuto a minuto.
             </h2>
             <p className="text-sm sm:text-base text-[#6B6B67] leading-relaxed">
               Nuestra red captura micropartículas finas, gases y variables bioclimáticas para darte un panorama exacto de la atmósfera en Cali.
@@ -146,10 +153,10 @@ const HomePage = () => {
       </section>
 
       {/* ── 2. BLOQUE DE CONTRASTE BOSQUE: RUTA SALUDABLE & ASISTENTE IA ── */}
-      <section className="w-full bg-[#0F1F17] text-white py-24 sm:py-28 relative overflow-hidden">
+      <section className="w-full bg-noche text-white py-24 sm:py-28 relative overflow-hidden">
         {/* Luces sutiles de fondo */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#2D6A4F]/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#D05A3F]/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-lima/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-lima/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -175,7 +182,7 @@ const HomePage = () => {
                 <div className="flex flex-wrap items-center gap-4">
                   <button
                     onClick={() => scrollToSection('sec-mapa')}
-                    className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-[#D05A3F] hover:bg-[#B84D34] text-white text-sm font-bold shadow-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                    className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-lima hover:bg-lima-dark text-noche text-sm font-bold shadow-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                   >
                     <Navigation size={16} />
                     Ver Ruta Saludable en Mapa
@@ -225,7 +232,7 @@ const HomePage = () => {
             <h2
               className="font-display text-3xl sm:text-4xl font-bold text-[#1A1A18] tracking-tight mb-3"
             >
-              Comportamiento y Ciclos Atmosféricos
+              ¿Cómo cambia el aire durante el día?
             </h2>
             <p className="text-sm text-[#6B6B67] leading-relaxed">
               Analiza la evolución de las partículas a lo largo de las horas y los meses para identificar patrones de dispersión.
@@ -282,7 +289,7 @@ const HomePage = () => {
             <h2
               className="font-display text-3xl sm:text-4xl font-bold text-[#1A1A18] tracking-tight mb-3"
             >
-              Mapa Geoespacial de Estaciones
+              ¿Cómo está el aire en tu barrio?
             </h2>
             <p className="text-sm text-[#6B6B67] max-w-xl mx-auto">
               Explora en detalle los nodos de medición, consulta los niveles por barrio y traza tu trayecto saludable.
@@ -290,7 +297,7 @@ const HomePage = () => {
           </ScrollReveal>
         </div>
 
-        <div className="w-full" style={{ height: '720px' }}>
+        <div className="w-full h-[480px] sm:h-[560px] lg:h-[720px]">
           <MapPage />
         </div>
       </section>
@@ -305,7 +312,7 @@ const HomePage = () => {
             <h2
               className="font-display text-3xl sm:text-4xl font-bold text-[#1A1A18] tracking-tight mb-3"
             >
-              Pronóstico Atmosférico
+              ¿Cómo va a estar el aire los próximos días?
             </h2>
             <p className="text-sm text-[#6B6B67] leading-relaxed">
               Condiciones de lluvia, temperatura y radiación estimadas para los próximos tres días en la capital del Valle.

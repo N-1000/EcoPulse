@@ -1,0 +1,4 @@
+# Dependencias solo para correr los tests -- no van en el requirements.txt
+# de producción, instalar aparte en el mismo venv del backend:
+#   pip install -r requirements-dev.txt
+pytest==9.1.1

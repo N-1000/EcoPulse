@@ -10,7 +10,15 @@
 export type MessageSender = 'user' | 'ecopulse-ai';
 
 /** Tipos de acciones que la IA puede ordenar a la interfaz de usuario */
-export type UIActionType = 'navigate' | 'show_quality_air';
+export type UIActionType = 'navigate' | 'show_quality_air' | 'suggest_options';
+
+/** Una opción sugerida dentro de un UIAction type="suggest_options"
+ * (backend: respuestas.yaml::opciones_sugeridas, chat.py). */
+export interface SuggestedOption {
+  label: string;
+  emoji?: string;
+  query: string;
+}
 
 export interface UIAction {
   type: UIActionType;
@@ -23,6 +31,9 @@ export interface Message {
   text: string;
   timestamp: Date;
   aiActions?: UIAction[];
+  /** Extraído de un UIAction type="suggest_options" en aiActions -- se
+   * renderiza como botones debajo de este mensaje puntual. */
+  suggestedOptions?: SuggestedOption[];
 }
 
 // --------------------------------------------------

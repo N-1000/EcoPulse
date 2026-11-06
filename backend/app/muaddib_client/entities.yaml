@@ -15,20 +15,20 @@
 # Cristales (ya cubiertos por "occidente"), asi que se agrego ahi. Si
 # el backend real lo modela distinto, corregir aca.
 #
-# Pendiente, fuera de este barrido, y esto NO es deuda de catalogo: no
-# falta un dato, falta el tipo. "melendez" y "chipichape" aparecen en
-# canonical.yaml/frases.txt como nombres de sensor/estacion, nombrados en
-# phrases de consultar_estado_sensor y localizar_sensor, pero no existe
-# un tipo de entidad "sensor" en este archivo. Esos intents pueden
-# clasificar bien en Nivel 0/1 y despachar de todos modos sin el
-# parametro que su accion necesita: get_sensor_health sin node_id,
-# locate_sensor sin destino. Es la misma clase de hueco que compare_zones
-# tenia antes de que existiera la compuerta de cardinalidad -- ahi no
-# fallaba porque nadie media, y esto no falla hoy porque ningun intent
-# declara cardinalidad sobre un tipo que ni siquiera existe todavia.
-# Arreglo pendiente: agregar el tipo "sensor" al catalogo y declarar
-# entity/entity_cardinality en esos dos intents para que la compuerta
-# los alcance.
+# 2026-10-10: se agrega el tipo "sensor" (melendez, chipichape -- los dos
+# nombres que aparecen en canonical.yaml/frases.txt). Esto resuelve la
+# mitad del hueco de abajo: extract_entities() escanea TODO entity_catalog
+# sin importar que declare el intent que termino resolviendo (ver
+# entities.py::extract_entities, no filtra por entity_types del intent),
+# asi que ahora "melendez"/"chipichape" SI quedan en Decision.entidades
+# aunque la intencion resuelta no declare entity:sensor -- lo suficiente
+# para que chat.py pueda avisar "no puedo buscar por nombre" via la regla
+# generica de acciones_sin_desagregacion (config.yaml), sin tocar
+# canonical.yaml. Lo que queda pendiente, y es un trabajo distinto: declarar
+# entity:["sensor"]/entity_cardinality en consultar_estado_sensor y
+# localizar_sensor para que la COMPUERTA de cardinalidad (no la aclaracion)
+# los alcance -- eso es decision de producto sobre canonical.yaml, fuera de
+# este barrido (ver el reporte interno del corpus de chat, no publicado; hallazgo de confianza).
 #
 # "periodo" (2026-09-19, canonical.yaml v2 / consultar_tendencia_calidad_aire):
 # keywords elegidas para NO coincidir con vocabulario de otras intenciones.
@@ -46,7 +46,9 @@ entity_catalog:
     - value: "24h"
       keywords: ["ultimas 24 horas", "24 horas", "hora por hora"]
     - value: mensual
-      keywords: ["mensual", "historico mensual", "mes a mes", "ultimos meses", "este año"]
+      keywords:
+        ["mensual", "historico mensual", "mes a mes", "ultimos meses", "este año",
+         "en lo que va del año", "del año", "anual"]
   region:
     - value: pance
       keywords: ["pance"]
@@ -69,3 +71,8 @@ entity_catalog:
       keywords: ["nodo menga"]
     - value: node-farallones
       keywords: ["nodo cristo rey", "nodo farallones"]
+  sensor:
+    - value: melendez
+      keywords: ["melendez"]
+    - value: chipichape
+      keywords: ["chipichape"]
