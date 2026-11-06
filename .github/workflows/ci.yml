@@ -108,6 +108,7 @@ jobs:
       - name: Instalar dependencias del backend
         run: |
           python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/python" -m pip install --upgrade pip==26.2.2 setuptools==84.2.1
           "$RUNNER_TEMP/venv/bin/python" -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt
 
       - name: Retirar la clave de despliegue
