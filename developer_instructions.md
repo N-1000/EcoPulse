@@ -26,3 +26,6 @@ Actúa como un Ingeniero de Software Senior especializado en React, TypeScript, 
 2. Identificar los archivos que necesitan modificaciones o creación.
 3. Evaluar el impacto de los cambios en la arquitectura general (`context.md`).
 4. Diseñar la solución paso a paso y ejecutar verificación mediante builds / tests.
+5. Indicar al cerrar: **Desplegado en cliente: sí/no (pin actual)** -- si el cambio toca `backend/requirements.txt` (el pin de MuadDib) o cualquier otra dependencia externa versionada, aclarar si el entorno real de producción ya corre esa versión o si quedó solo en una rama/commit local sin promoverse.
+
+<!-- No existía una plantilla de cierre como la de MuadDib (CLAUDE.md, "Cómo cierras cada tarea") -- se agregó este punto 5 como equivalente mínimo. Si se quiere un bloque de cierre más estructurado, definirlo aparte. -->

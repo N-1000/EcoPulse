@@ -10,6 +10,7 @@ python-dotenv==1.0.1
 cachetools==5.5.0
 httpx==0.28.1
 geopy==2.4.1
+slowapi==0.1.10
 
 # Router de intent de MuadDib. Pineado a un commit SHA, no a la rama
 # "dev" (que se mueve a diario) -- mismo criterio que ya usamos para
@@ -27,4 +28,17 @@ geopy==2.4.1
 # Medido en la prueba de carga: bajó el bloqueo del event loop de chat.py
 # de 184 eventos (peor 1.4s) a 4 (peor 0.55s) solo con el fix de caché de
 # EcoPulse -- este bump es para ver si resuelve el resto.
-git+https://github.com/N-1000/MuadDib.git@8a62a12b4c97ed158beb7435f5c741d6b6379ba8#egg=muaddib
+#
+# 2026-10-10 (rama actualizar-muaddib, SIN mergear a master todavía): bump
+# a e45cd99 -- 16 commits adelante del pin anterior, incluye los hallazgos
+# 1/2/6/7 (fail-safe sensitive en Nivel 0, validacion de input de
+# herramienta con efecto_real, trazar version_config/version_prompt/modelo,
+# neutralizar < y > en texto de usuario) y los 3 de esta vuelta
+# (acciones_sin_desagregacion validado fail-fast, motivos_escalada en
+# log_decision(), _eventos acotado a ventana fija + hit_rate(ultimos=N)).
+# Sin este bump, config.yaml::acciones_sin_desagregacion no hace nada --
+# el config_loader.py viejo lo ignora en silencio (confirmado: con el pin
+# anterior, 2 de los tests nuevos de backend/tests/test_aclaracion_limitacion.py
+# fallan). Ver docs/comparacion-pin-muaddib.md para la comparacion completa
+# del corpus de 42 mensajes contra las dos versiones.
+git+https://github.com/N-1000/MuadDib.git@e45cd99dc98ad37fd6c88be26a291290ccfcccce#egg=muaddib

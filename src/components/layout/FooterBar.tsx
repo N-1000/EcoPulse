@@ -10,7 +10,7 @@ interface FooterBarProps {
 
 const FooterBar = ({ onNavigate }: FooterBarProps) => {
   return (
-    <footer className="flex flex-wrap items-center justify-between gap-4 px-8 py-4 border-t border-[#DDD5C4] bg-[#EDE3CE] mt-6">
+    <footer className="flex flex-wrap items-center justify-between gap-4 px-8 py-4 border-t border-[#DDD5C4] bg-hueso-mid mt-6">
       {/* Navegación pills izquierda */}
       <nav className="flex items-center gap-2 text-xs font-semibold text-[#5A5A56]">
         <button className="opacity-50">‹</button>

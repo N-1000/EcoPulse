@@ -2,15 +2,32 @@
 // ECOPULSE 2026 - components/layout/Layout.tsx
 // Cascade única: HomePage en scroll continuo, navegación por anclas.
 // ===================================================
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import FooterBar from './FooterBar';
 import EcopulseChat from '../chat/EcopulseChat';
 import FloatingChatButton from '../chat/FloatingChatButton';
 import HomePage from '../../pages/HomePage';
 import type { PageId } from '../../types';
 
+// El botón flotante del chat tapaba la píldora de indicadores del Hero en
+// viewports bajos (iPhone SE 1g y 2/3: 320x690 y 375x667) -- el Hero es
+// min-h-screen y en esos altos su contenido no entra junto con la zona que
+// el botón reserva abajo a la derecha. Ningún padding lo resolvía del todo
+// sin pelear con el contenido. Se oculta el botón mientras se está arriba
+// del todo (antes de scrollear) y aparece apenas el usuario empieza a
+// explorar -- deja de competir por el mismo espacio.
+const UMBRAL_SCROLL_BOTON_CHAT = 300;
+
 const Layout = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [mostrarBotonChat, setMostrarBotonChat] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setMostrarBotonChat(window.scrollY > UMBRAL_SCROLL_BOTON_CHAT);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const handleNavigate = (page: PageId) => {
     const sectionMap: Partial<Record<PageId, string>> = {
@@ -27,9 +44,9 @@ const Layout = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-[#F2E8D5]">
+    <div className="min-h-screen w-full flex flex-col bg-hueso">
       <main className="flex-1 w-full">
-        <HomePage />
+        <HomePage onOpenChat={() => setIsChatOpen(true)} />
         <FooterBar onNavigate={handleNavigate} />
       </main>
 
@@ -60,7 +77,11 @@ const Layout = () => {
         aria-hidden="true"
       />
 
-      <FloatingChatButton isOpen={isChatOpen} onToggle={() => setIsChatOpen(p => !p)} />
+      <FloatingChatButton
+        isOpen={isChatOpen}
+        onToggle={() => setIsChatOpen(p => !p)}
+        visible={mostrarBotonChat || isChatOpen}
+      />
     </div>
   );
 };

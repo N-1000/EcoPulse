@@ -1,7 +1,8 @@
 import asyncio
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Request
 from typing import Dict, Any
-from app.models.route import RouteRequest, RouteResult
+from app.core.limiter import limiter
+from app.models.route import CoordenadaInvalida, RouteRequest, RouteResult, validar_coordenada
 from app.services.routing import select_best_destination, calculate_healthy_route, CALI_PARKS
 from app.services.clickhouse_nodes import obtener_nodos_actuales
 
@@ -18,13 +19,22 @@ def get_best_destination(lat: float, lng: float):
 
     `def` a propósito -- ver la nota de nodes.py:get_nodes sobre por qué
     obtener_nodos_actuales() no puede vivir en un `async def`.
+
+    Query params no pasan por un modelo Pydantic -- misma validación de
+    coordenada que RouteRequest (models/route.py), llamada a mano acá.
     """
+    try:
+        validar_coordenada([lat, lng], "origen")
+    except CoordenadaInvalida as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
     nodes = obtener_nodos_actuales()
     dest = select_best_destination([lat, lng], nodes)
     return dest
 
 @router.post("/healthy-route", response_model=RouteResult)
-async def post_healthy_route(req: RouteRequest) -> Dict[str, Any]:
+@limiter.limit("10/minute")
+async def post_healthy_route(request: Request, req: RouteRequest) -> Dict[str, Any]:
     """
     Calcula una ruta saludable completa.
     Recibe origen y destino, devuelve trayecto, tiempos por modo,
@@ -34,6 +44,10 @@ async def post_healthy_route(req: RouteRequest) -> Dict[str, Any]:
     que llama OSRM/Overpass con httpx.AsyncClient) -- pero obtener_nodos_actuales()
     es bloqueante (ClickHouse síncrono), así que va a un hilo aparte con
     asyncio.to_thread() en vez de ejecutarse inline en el event loop.
+
+    10/minute por IP: cada llamada pega a OSRM y Overpass (terceros
+    gratuitos, sin API key) -- sin límite, un abuso acá puede terminar en
+    que esos servicios baneen la IP de EcoPulse, no solo al usuario.
     """
     nodes = await asyncio.to_thread(obtener_nodos_actuales)
 

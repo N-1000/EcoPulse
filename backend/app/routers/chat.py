@@ -20,8 +20,10 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
+from app.core.config import get_settings
+from app.core.limiter import limiter
 from app.models.chat import ChatRequest, ChatResponse, UIAction
 from app.muaddib_client.tools import Herramienta
 from app.services.clickhouse_nodes import obtener_nodos_actuales
@@ -44,7 +46,18 @@ with _RESPUESTAS_PATH.open("r", encoding="utf-8") as _f:
     _RESPUESTAS: dict[str, Any] = yaml.safe_load(_f)
 
 GENERIC_ESCALATION_REPLY: str = _RESPUESTAS["escalada"]["generica"]
+MENSAJE_MUY_LARGO: str = _RESPUESTAS["validacion"]["mensaje_muy_largo"]
 NO_CAPACIDAD: dict[str, str] = _RESPUESTAS["no_capacidad"]
+NO_DESAGREGADO: dict[str, str] = _RESPUESTAS["no_desagregado"]
+OPCIONES_SUGERIDAS: list[dict[str, str]] = _RESPUESTAS["opciones_sugeridas"]
+
+# Revisión de seguridad 2026-09-22: sin límite, un mensaje de 200.000
+# caracteres se aceptaba igual y escalaba a Nivel 2 -- costo real de LLM
+# por request, sin techo. El mensaje más largo del corpus real
+# (frases.txt) ronda los 90 caracteres; 500 deja margen de sobra sin
+# abrir la puerta a abuso de costo. Validado acá, no en ChatRequest
+# (nunca se toca ese modelo).
+MAX_LARGO_MENSAJE = 500
 _GREETING_TEXTS: list[str] = _RESPUESTAS["saludos"]
 _PANCE = _RESPUESTAS["planes"]["pance"]
 _CAMINATA_TEXTS: list[str] = _RESPUESTAS["planes"]["caminata"]
@@ -110,8 +123,31 @@ def _kwargs_para_herramienta(nombre: str, decision: Decision) -> dict[str, Any]:
     return {}
 
 
+def _aclarar_si_corresponde(
+    nombre: str, decision: Decision, reply: str, acciones_sin_desagregacion: frozenset[str]
+) -> str:
+    """Si `nombre` no puede desagregar por zona/sensor puntual (config.yaml::acciones_sin_desagregacion)
+    y el usuario mencionó uno, lo aclara SIEMPRE -- regla genérica leída de config, no un if por caso:
+    cualquier acción nueva que se agregue a esa lista queda cubierta acá sin tocar este archivo de nuevo.
+
+    decision.entidades ya trae CUALQUIER tipo de entity_catalog detectado en el texto, sin importar si
+    la intención resuelta lo declara (extract_entities escanea todo el catálogo, ver entities.py) -- por
+    eso esto funciona aunque `nombre` provenga de un intent que nunca declaró entity:region/sensor.
+    """
+    if nombre not in acciones_sin_desagregacion:
+        return reply
+    if decision.entidades.get("region"):
+        return f"{reply} {NO_DESAGREGADO['region']}"
+    if decision.entidades.get("sensor"):
+        return f"{reply} {NO_DESAGREGADO['sensor']}"
+    return reply
+
+
 def _texto_y_ui_para_accion(
-    nombre: str, decision: Decision, herramientas: dict[str, Herramienta]
+    nombre: str,
+    decision: Decision,
+    herramientas: dict[str, Herramienta],
+    acciones_sin_desagregacion: frozenset[str],
 ) -> tuple[str, list[UIAction]]:
     """Traduce UN token de accion a (texto, UIActions) -- la única función que mezcla Decision con las Herramientas."""
     if nombre == "reply_greeting":
@@ -133,6 +169,7 @@ def _texto_y_ui_para_accion(
         return "", []
 
     reply = herramienta.funcion(**_kwargs_para_herramienta(nombre, decision))
+    reply = _aclarar_si_corresponde(nombre, decision, reply, acciones_sin_desagregacion)
     pagina = _PAGINA_POR_ACCION.get(nombre)
     ui = [UIAction(type="navigate", payload={"page": pagina})] if pagina else []
     return reply, ui
@@ -159,7 +196,11 @@ def _procesar_decision_nivel2(decision: Decision) -> tuple[str, list[UIAction]]:
     return GENERIC_ESCALATION_REPLY, []
 
 
-def _procesar_decision(decision: Decision, herramientas: dict[str, Herramienta]) -> tuple[str, list[UIAction]]:
+def _procesar_decision(
+    decision: Decision,
+    herramientas: dict[str, Herramienta],
+    acciones_sin_desagregacion: frozenset[str],
+) -> tuple[str, list[UIAction]]:
     if decision.nivel == 2:
         return _procesar_decision_nivel2(decision)
 
@@ -179,7 +220,7 @@ def _procesar_decision(decision: Decision, herramientas: dict[str, Herramienta])
     fragmentos: list[str] = []
     acciones: list[UIAction] = []
     for token in decision.accion:
-        texto, ui = _texto_y_ui_para_accion(token, decision, herramientas)
+        texto, ui = _texto_y_ui_para_accion(token, decision, herramientas, acciones_sin_desagregacion)
         if texto:
             fragmentos.append(texto)
         acciones.extend(ui)
@@ -218,7 +259,15 @@ _total_decisiones = 0
 
 @router.get("/metrics")
 async def chat_metrics() -> dict[str, Any]:
-    """hit_rate real de MuadDib desde que arrancó este proceso, más el total como denominador."""
+    """hit_rate real de MuadDib desde que arrancó este proceso, más el total como denominador.
+
+    Apagado en producción por default (ENABLE_DEV_ENDPOINTS=false): 404,
+    no 403 -- no confirma que el endpoint existe. Ver /api/meta/* en
+    main.py, mismo criterio; acá va adentro de la función porque el
+    router de chat también tiene el POST real, que sigue activo siempre.
+    """
+    if not get_settings().enable_dev_endpoints:
+        raise HTTPException(status_code=404)
     return {
         "hit_rate": round(hit_rate(), 3),
         "total_decisiones": _total_decisiones,
@@ -226,8 +275,19 @@ async def chat_metrics() -> dict[str, Any]:
 
 
 @router.post("/", response_model=ChatResponse)
-async def process_chat(request: ChatRequest, http_request: Request) -> ChatResponse:
-    motor = getattr(http_request.app.state, "muaddib_router", None)
+@limiter.limit("20/minute")
+async def process_chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
+    # El parámetro se llama `request` (no `http_request`) a propósito: el
+    # decorador @limiter.limit de slowapi lo busca por ese nombre exacto en
+    # la firma de la función -- ver core/limiter.py sobre por qué
+    # get_remote_address() y no get_ipaddr().
+    if len(chat_request.message) > MAX_LARGO_MENSAJE:
+        logger.warning(
+            "chat: mensaje de %d caracteres rechazado (máximo %d)", len(chat_request.message), MAX_LARGO_MENSAJE
+        )
+        return ChatResponse(reply=MENSAJE_MUY_LARGO, ai_actions=[])
+
+    motor = getattr(request.app.state, "muaddib_router", None)
     if motor is None:
         logger.error("chat: MuadDib no se inicializó -- revisar el arranque del servicio")
         return ChatResponse(reply=GENERIC_ESCALATION_REPLY, ai_actions=[])
@@ -237,7 +297,7 @@ async def process_chat(request: ChatRequest, http_request: Request) -> ChatRespo
         # resolve_async(), no resolve(): el encode de Nivel 1 corre en el
         # executor dedicado de MuadDib (torch_threads pineado), no bloquea
         # el event loop de este proceso -- mismo criterio que resolver_escaladas().
-        resultado = await resolve_async(request.message, motor.config, motor.canonical_data)
+        resultado = await resolve_async(chat_request.message, motor.config, motor.canonical_data)
         resultado = await resolver_escaladas(resultado, motor.herramientas, motor.config, motor.api_key)
     except Exception as exc:
         logger.error("chat: resolve_async()/resolver_escaladas() tiró una excepción inesperada: %s", exc)
@@ -245,6 +305,7 @@ async def process_chat(request: ChatRequest, http_request: Request) -> ChatRespo
     latencia_ms = (time.perf_counter() - inicio) * 1000
 
     herramientas_por_nombre = {h.name: h for h in motor.herramientas}
+    acciones_sin_desagregacion = motor.config.get("acciones_sin_desagregacion", frozenset())
 
     fragmentos: list[str] = []
     acciones: list[UIAction] = []
@@ -252,10 +313,26 @@ async def process_chat(request: ChatRequest, http_request: Request) -> ChatRespo
     for decision in resultado.decisiones:
         log_decision(EventoDecision(decision=decision, latencia_ms=latencia_ms))
         _total_decisiones += 1
-        texto, ui = _procesar_decision(decision, herramientas_por_nombre)
+        texto, ui = _procesar_decision(decision, herramientas_por_nombre, acciones_sin_desagregacion)
         if texto:
             fragmentos.append(texto)
         acciones.extend(ui)
 
     reply = " ".join(fragmentos) if fragmentos else GENERIC_ESCALATION_REPLY
+    if reply == GENERIC_ESCALATION_REPLY:
+        # Nada resolvió de verdad -- en vez de dejar al usuario sin ninguna
+        # guía, se sugieren capacidades reales (opciones_sugeridas en
+        # respuestas.yaml, validadas por test_suggest_options.py contra
+        # Nivel 0/1 para que ninguna sugerencia caiga ella misma en fallback).
+        acciones.append(
+            UIAction(
+                type="suggest_options",
+                payload={
+                    "options": [
+                        {"label": o["label"], "emoji": o["emoji"], "query": o["query"]}
+                        for o in OPCIONES_SUGERIDAS
+                    ]
+                },
+            )
+        )
     return ChatResponse(reply=reply, ai_actions=acciones)

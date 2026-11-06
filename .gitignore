@@ -53,3 +53,10 @@ datos/
 playwright-lab/
 
 
+
+# Corpus privado de chat, sus reportes generados y documentos internos (no se publican)
+backend/tests/corpus_chat.py
+docs/reporte-corpus-chat.md
+docs/reporte-corpus-chat-datos.md
+docs/comparacion-pin-muaddib.md
+docs/inventario-integracion.md

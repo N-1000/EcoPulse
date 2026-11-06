@@ -19,7 +19,7 @@ export const HealthyRoutePanel = ({
   onClearRoute,
 }: HealthyRoutePanelProps) => {
   return (
-    <div className="absolute bottom-14 left-4 z-[400] w-[270px] bg-white/95 backdrop-blur-md border border-emerald-100 rounded-2xl p-4 shadow-[0_12px_40px_rgba(0,0,0,0.06)] animate-slide-up">
+    <div className="absolute bottom-14 left-4 right-4 sm:right-auto z-[400] w-auto sm:w-[270px] max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-md border border-emerald-100 rounded-2xl p-4 shadow-[0_12px_40px_rgba(0,0,0,0.06)] animate-slide-up">
       {/* Encabezado */}
       <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-gray-100">
         <div className="flex items-center gap-1.5">

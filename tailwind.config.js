@@ -14,6 +14,21 @@ export default {
           dark:    '#1A3A2A',
           night:   '#0F1F17',
         },
+        // Azul noche — zonas oscuras (feedback de diseño: alinear con la
+        // identidad de Instagram en vez del verde bosque oscuro en bloques
+        // de contraste). Valores de partida razonables, no confirmados
+        // contra la marca real -- ajustar si no coinciden.
+        noche: {
+          DEFAULT: '#0F1B3C',
+          light:   '#1B2C5C',
+          dark:    '#081024',
+        },
+        // Verde lima — botones y acentos primarios (mismo feedback que noche).
+        lima: {
+          DEFAULT: '#A3E635',
+          light:   '#BEF264',
+          dark:    '#84CC16',
+        },
         // Terracota cálida — acento secundario
         terra: {
           DEFAULT: '#D05A3F',

@@ -10,40 +10,23 @@ const WavyTrend = ({ trend, color }: { trend: 'up' | 'down' | 'stable'; color: s
   };
   const { wave, arrow } = paths[trend] ?? paths.stable;
   return (
-    <svg width="36" height="14" viewBox="0 0 36 14" fill="none">
+    <svg width="36" height="14" viewBox="0 0 36 14" fill="none" className="flex-shrink-0">
       <path d={wave} stroke={color} strokeWidth="2" strokeLinecap="round" />
       <path d={arrow} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 };
 
-const RingGauge = ({ value, max = 100, color }: { value: number; max?: number; color: string }) => {
-  const r = 18;
-  const circ = 2 * Math.PI * r;
-  const pct = Math.min(Math.max(value, 0) / max, 1);
-  const dash = pct * circ;
-
+// Barra de escala horizontal -- reemplaza al gauge circular anterior (52px,
+// ilegible a simple vista). Comunica de un vistazo dónde cae el valor
+// dentro de su rango, sin tener que leer el número para entenderlo.
+const ScaleBar = ({ value, max, color }: { value: number; max: number; color: string }) => {
+  const pct = Math.min(Math.max(value, 0) / max, 1) * 100;
   return (
-    <div className="relative flex items-center justify-center">
-      <svg width="52" height="52" viewBox="0 0 46 46">
-        {/* Pista de fondo */}
-        <circle cx="23" cy="23" r={r} fill="none" stroke="#DDD5C4" strokeWidth="3.5" opacity="0.6" />
-        {/* Arco de progreso */}
-        <circle
-          cx="23" cy="23" r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="3.5"
-          strokeDasharray={`${dash} ${circ - dash}`}
-          strokeDashoffset={circ / 4}
-          strokeLinecap="round"
-          className="transition-all duration-700 ease-out"
-        />
-      </svg>
-      {/* Indicador de centro de pulso sutil */}
-      <div 
-        className="absolute w-2 h-2 rounded-full opacity-75"
-        style={{ backgroundColor: color }}
+    <div className="w-full h-1.5 rounded-full bg-[#EDE6D6] overflow-hidden">
+      <div
+        className="h-full rounded-full transition-all duration-700 ease-out"
+        style={{ width: `${pct}%`, backgroundColor: color }}
       />
     </div>
   );
@@ -97,15 +80,11 @@ const ContaminantesGrid = () => {
   };
 
   const items = [
-    // Arriba Izquierda: entra desde la izquierda
     { id: 'pm25', name: 'PM2.5 (Partículas)', value: getMetricVal('pm25'), max: 50, unit: 'µg/m³', color: '#4A8C6F', trend: 'down' as const, direction: 'right' as const, delay: 0 },
-    // Arriba Derecha: entra desde arriba
     { id: 'co2',  name: 'CO₂ (Dióxido)',   value: getMetricVal('co2'),  max: 1000, unit: 'ppm',   color: '#537A8C', trend: 'stable' as const, direction: 'down' as const, delay: 100 },
-    // Abajo Izquierda: entra desde abajo
     // Temperatura viene de Open-Meteo, no de los sensores Tangara: la mayoría
     // reporta autocalentamiento del gabinete (36-41°C), ver useCurrentWeather.
     { id: 'tmp',  name: 'Temperatura',      value: weather.temperature ?? 0,  max: 45, unit: '°C',    color: '#D07C60', trend: 'up' as const, direction: 'up' as const, delay: 150 },
-    // Abajo Derecha: entra desde la derecha
     // Humedad viene de Open-Meteo, mismo motivo que la temperatura: el
     // autocalentamiento del gabinete también baja la humedad relativa
     // medida por los sensores Tangara.
@@ -114,13 +93,13 @@ const ContaminantesGrid = () => {
 
 
   return (
-    <div className="w-full max-w-[720px] mx-auto">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xs font-extrabold text-[#1A1A18] uppercase tracking-wider">
           Indicadores clave
         </h3>
         {formattedUpdate && (
-          <span className="flex items-center gap-1 text-[10px] text-[#8C8C86] font-semibold">
+          <span className="flex items-center gap-1 text-[10px] text-[#6B6B67] font-semibold">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
@@ -130,7 +109,7 @@ const ContaminantesGrid = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-6 w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
         {items.map((item) => {
           const status = getStatus(item.id, item.value);
 
@@ -141,8 +120,8 @@ const ContaminantesGrid = () => {
               delay={item.delay}
               className="w-full h-full"
             >
-              <div className="group relative flex flex-col items-center justify-between p-6 h-full text-center bg-[#E5DBC6]/50 rounded-2xl border border-[#DDD5C4] hover:bg-[#EDE3CE] hover:border-[#C4B9A3] hover:shadow-lg transition-all duration-300 cursor-help">
-                
+              <div className="group relative flex flex-col gap-3 p-5 h-full bg-white rounded-2xl border border-[#E5DBC6] hover:border-[#C4B9A3] hover:shadow-md transition-all duration-300 cursor-help">
+
                 {/* ── TOOLTIP FLOTANTE EN HOVER ── */}
                 <div className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 transform group-hover:-translate-y-1 absolute bottom-[calc(100%+10px)] inset-x-2 z-30 p-3.5 bg-[#1F2923] text-white rounded-xl shadow-2xl border border-[#2D6A4F]/40 text-left">
                   <div className="flex items-center justify-between mb-1.5 gap-2">
@@ -157,35 +136,27 @@ const ContaminantesGrid = () => {
                   <div className="pt-1.5 border-t border-white/10 flex items-center gap-1 text-[10px] text-[#A8C5B0]">
                     <span className="font-semibold">💡 Impacto:</span> {status.tip}
                   </div>
-
-                  {/* Flecha inferior del tooltip */}
                   <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-6 border-x-transparent border-t-6 border-t-[#1F2923]" />
                 </div>
 
                 {/* ── CONTENIDO DE LA TARJETA ── */}
-                <span className="text-sm font-bold text-[#1A1A18] mb-1">
-                  {item.name}
-                </span>
-
-                <div className="my-3 scale-110">
-                  <RingGauge value={item.value} max={item.max} color={item.color} />
-                </div>
-
-
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-extrabold text-[#1A1A18]">{item.value}</span>
-                  <span className="text-xs font-semibold text-[#6B6B67]">{item.unit}</span>
-                </div>
-
-                <div className="mt-2">
-                  <span className={`inline-block text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${status.badgeColor}`}>
-                    {status.text}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-[#4A4A46] uppercase tracking-wide">
+                    {item.name}
                   </span>
-                </div>
-
-                <div className="mt-2.5">
                   <WavyTrend trend={item.trend} color={item.color} />
                 </div>
+
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-4xl font-extrabold text-[#1A1A18] tabular-nums leading-none">{item.value}</span>
+                  <span className="text-sm font-semibold text-[#6B6B67]">{item.unit}</span>
+                </div>
+
+                <ScaleBar value={item.value} max={item.max} color={item.color} />
+
+                <span className={`self-start inline-block text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${status.badgeColor}`}>
+                  {status.text}
+                </span>
               </div>
             </ScrollReveal>
           );
