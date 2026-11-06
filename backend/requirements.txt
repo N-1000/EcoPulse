@@ -7,9 +7,7 @@ clickhouse-connect==0.8.11
 pydantic==2.10.4
 pydantic-settings==2.7.1
 python-dotenv==1.0.1
-cachetools==5.5.0
 httpx==0.28.1
-geopy==2.4.1
 slowapi==0.1.10
 
 # Router de intent de MuadDib. Pineado a un commit SHA, no a la rama
