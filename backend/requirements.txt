@@ -1,7 +1,8 @@
 # ===================================================
 # TANGARA 2026 - Backend (FastAPI + ClickHouse)
 # ===================================================
-fastapi==0.115.6
+fastapi==0.162.0
+starlette==1.9.0
 uvicorn[standard]==0.34.0
 clickhouse-connect==0.8.11
 pydantic==2.10.4
