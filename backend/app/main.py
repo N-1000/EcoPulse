@@ -98,7 +98,7 @@ def readiness(request: Request) -> JSONResponse:
     nivel2_configurado: si hay ANTHROPIC_API_KEY cargada. Antes de esto,
     sin API key el chat daba 200/ready=True igual (Nivel 0/1 funcionan),
     pero el 100% de las escaladas caían en fallback_seguro sin que ningún
-    chequeo de salud lo viera -- hallazgo 2 de docs/reporte-corpus-chat.md.
+    chequeo de salud lo viera -- hallazgo 2 del reporte interno del corpus de chat (no publicado).
     """
     motor = getattr(request.app.state, "muaddib_router", None)
     if motor is None:

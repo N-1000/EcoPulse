@@ -225,7 +225,7 @@ def pytest_sessionfinish(session, exitstatus):
 
     docs_dir = __import__("pathlib").Path(__file__).resolve().parent.parent.parent / "docs"
     docs_dir.mkdir(exist_ok=True)
-    # Archivo SEPARADO del análisis manual (docs/reporte-corpus-chat.md) a
+    # Archivo SEPARADO del análisis manual (reporte interno, no publicado) a
     # propósito: este hook sobreescribe el archivo completo en cada corrida,
     # y pisó el análisis a mano la primera vez que se reescribió este
     # conftest.py. Los datos crudos van siempre acá; el análisis humano vive

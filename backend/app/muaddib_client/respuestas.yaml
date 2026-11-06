@@ -80,7 +80,7 @@ no_capacidad:
 # Aclaración genérica: se pega (chat.py) a la respuesta de cualquier accion
 # declarada en config.yaml::acciones_sin_desagregacion cuando el usuario
 # mencionó una zona o un sensor puntual -- el dato que se dio es general de
-# toda la red, no de lo que se nombró. Ver docs/reporte-corpus-chat.md.
+# toda la red, no de lo que se nombró. Ver el reporte interno del corpus de chat (no publicado).
 no_desagregado:
   region: >-
     Ojo: esto es el dato general de toda Cali, todavía no tengo el aire

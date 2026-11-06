@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ===================================================
-# Hallazgo de severidad alta (docs/reporte-corpus-chat.md): aire_zona_02,
+# Hallazgo de severidad alta (reporte interno del corpus de chat, no publicado): aire_zona_02,
 # aire_zona_03, sensor_02 y tendencia_03 resolvieron sin escalar pero
 # estaban mal -- ignoraron una zona/sensor mencionado sin avisar, o usaron
 # el periodo por default en vez del que el mensaje pedía. Regla genérica

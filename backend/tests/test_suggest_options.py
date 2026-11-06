@@ -2,7 +2,7 @@
 # ===================================================
 # suggest_options: cuando el chat cae en el fallback genérico, el backend
 # agrega un UIAction con 3-4 capacidades reales para que el frontend las
-# muestre como botones (ver propuesta en docs/reporte-corpus-chat.md).
+# muestre como botones (ver propuesta en el reporte interno del corpus de chat, no publicado).
 #
 # El riesgo real de esta feature: sugerir una opción que a su vez cae en
 # fallback sería peor que no sugerir nada. Por eso el test central de este

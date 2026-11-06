@@ -28,16 +28,14 @@ slowapi==0.1.10
 # de 184 eventos (peor 1.4s) a 4 (peor 0.55s) solo con el fix de caché de
 # EcoPulse -- este bump es para ver si resuelve el resto.
 #
-# 2026-10-10 (rama actualizar-muaddib, SIN mergear a master todavía): bump
-# a e45cd99 -- 16 commits adelante del pin anterior, incluye los hallazgos
-# 1/2/6/7 (fail-safe sensitive en Nivel 0, validacion de input de
+# 2026-10-10: bump a e45cd99 -- 16 commits adelante del pin anterior, incluye
+# los hallazgos 1/2/6/7 (fail-safe sensitive en Nivel 0, validacion de input de
 # herramienta con efecto_real, trazar version_config/version_prompt/modelo,
-# neutralizar < y > en texto de usuario) y los 3 de esta vuelta
+# neutralizar < y > en texto de usuario) y los 3 de esa vuelta
 # (acciones_sin_desagregacion validado fail-fast, motivos_escalada en
 # log_decision(), _eventos acotado a ventana fija + hit_rate(ultimos=N)).
 # Sin este bump, config.yaml::acciones_sin_desagregacion no hace nada --
 # el config_loader.py viejo lo ignora en silencio (confirmado: con el pin
-# anterior, 2 de los tests nuevos de backend/tests/test_aclaracion_limitacion.py
-# fallan). Ver docs/comparacion-pin-muaddib.md para la comparacion completa
-# del corpus de 42 mensajes contra las dos versiones.
+# anterior, 2 tests de backend/tests/test_aclaracion_limitacion.py fallan).
+# 2026-11-06: este es el pin que se publica en dev; se mantiene sin cambios.
 git+https://github.com/N-1000/MuadDib.git@e45cd99dc98ad37fd6c88be26a291290ccfcccce#egg=muaddib

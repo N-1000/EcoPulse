@@ -5,7 +5,7 @@
 # puede funcionar -- sin ANTHROPIC_API_KEY, el chat completo "funciona"
 # (200, ready=True) pero el 100% de las escaladas van a caer en
 # fallback_seguro, y nada en este endpoint lo avisa. Hallazgo 2 del
-# reporte de corpus (docs/reporte-corpus-chat.md).
+# reporte interno de corpus (no publicado).
 # ===================================================
 import json
 from types import SimpleNamespace

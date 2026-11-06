@@ -13,7 +13,7 @@
 #
 # Los 4 mensajes de chat no son genéricos -- cada uno verifica
 # específicamente algo que cambió con el bump de pin de MuadDib a e45cd99
-# (ver docs/comparacion-pin-muaddib.md): si el deploy real sigue en el pin
+# (comparacion interna de pines, no publicada): si el deploy real sigue en el pin
 # viejo por error, ESTOS chequeos son los que lo detectan, no un health
 # check genérico.
 # ===================================================

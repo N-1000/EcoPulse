@@ -26,7 +26,7 @@ entity_defaults:
 # nombre sea una accion ya registrada), en vez de un if hardcodeado por
 # caso. No incluye show_quality_air (la aclaracion de Pance ya va fija en
 # chat.py) ni las acciones "no_capacidad" (su propio texto ya aclara) --
-# ver docs/reporte-corpus-chat.md, hallazgo de respuestas incorrectas con
+# ver el reporte interno del corpus de chat (no publicado), hallazgo de respuestas incorrectas con
 # confianza (aire_zona_02/03, sensor_02).
 acciones_sin_desagregacion:
   - show_air_quality

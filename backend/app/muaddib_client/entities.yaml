@@ -28,7 +28,7 @@
 # entity:["sensor"]/entity_cardinality en consultar_estado_sensor y
 # localizar_sensor para que la COMPUERTA de cardinalidad (no la aclaracion)
 # los alcance -- eso es decision de producto sobre canonical.yaml, fuera de
-# este barrido (ver docs/reporte-corpus-chat.md, hallazgo de confianza).
+# este barrido (ver el reporte interno del corpus de chat, no publicado; hallazgo de confianza).
 #
 # "periodo" (2026-09-19, canonical.yaml v2 / consultar_tendencia_calidad_aire):
 # keywords elegidas para NO coincidir con vocabulario de otras intenciones.
