@@ -82,13 +82,21 @@ export const HealthyRoutePanel = ({
           <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mb-0.5">Cobertura Verde</p>
           <p className="text-sm font-black text-emerald-700">{routeResult.greenCoverage}%</p>
         </div>
-        <div className="rounded-xl px-3 py-2 border" style={{
-          background: routeResult.averageICA <= 50 ? '#F0FDF4' : routeResult.averageICA <= 100 ? '#FEFCE8' : '#FEF2F2',
-          borderColor: routeResult.averageICA <= 50 ? '#BBF7D0' : routeResult.averageICA <= 100 ? '#FDE68A' : '#FECACA',
-        }}>
-          <p className="text-[9px] font-bold uppercase tracking-wider mb-0.5" style={{ color: routeResult.averageICA <= 50 ? '#16A34A' : routeResult.averageICA <= 100 ? '#CA8A04' : '#DC2626' }}>ICA Prom.</p>
-          <p className="text-sm font-black" style={{ color: routeResult.averageICA <= 50 ? '#15803D' : routeResult.averageICA <= 100 ? '#A16207' : '#B91C1C' }}>{routeResult.averageICA}</p>
-        </div>
+        {routeResult.averageICA == null ? (
+          // Sin nodos en vivo el backend devuelve null: no hay ICA que mostrar (EP-011).
+          <div className="rounded-xl px-3 py-2 border" style={{ background: '#F9FAFB', borderColor: '#E5E7EB' }}>
+            <p className="text-[9px] font-bold uppercase tracking-wider mb-0.5 text-gray-500">ICA Prom.</p>
+            <p className="text-sm font-black text-gray-500">Sin datos en vivo</p>
+          </div>
+        ) : (
+          <div className="rounded-xl px-3 py-2 border" style={{
+            background: routeResult.averageICA <= 50 ? '#F0FDF4' : routeResult.averageICA <= 100 ? '#FEFCE8' : '#FEF2F2',
+            borderColor: routeResult.averageICA <= 50 ? '#BBF7D0' : routeResult.averageICA <= 100 ? '#FDE68A' : '#FECACA',
+          }}>
+            <p className="text-[9px] font-bold uppercase tracking-wider mb-0.5" style={{ color: routeResult.averageICA <= 50 ? '#16A34A' : routeResult.averageICA <= 100 ? '#CA8A04' : '#DC2626' }}>ICA Prom.</p>
+            <p className="text-sm font-black" style={{ color: routeResult.averageICA <= 50 ? '#15803D' : routeResult.averageICA <= 100 ? '#A16207' : '#B91C1C' }}>{routeResult.averageICA}</p>
+          </div>
+        )}
       </div>
 
       {/* Métrica de CO2 Evitado */}
@@ -124,7 +132,7 @@ export const HealthyRoutePanel = ({
       )}
 
       {/* Alerta de tráfico y contaminación */}
-      {routeResult.averageICA > 100 && (
+      {routeResult.averageICA != null && routeResult.averageICA > 100 && (
         <div className="mb-3 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-2.5">
           <AlertTriangle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
           <p className="text-[10px] text-red-800 leading-snug">
@@ -133,7 +141,7 @@ export const HealthyRoutePanel = ({
           </p>
         </div>
       )}
-      {routeResult.averageICA > 75 && routeResult.averageICA <= 100 && (
+      {routeResult.averageICA != null && routeResult.averageICA > 75 && routeResult.averageICA <= 100 && (
         <div className="mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
           <AlertTriangle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-[10px] text-amber-800 leading-snug">

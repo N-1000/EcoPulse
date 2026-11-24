@@ -61,6 +61,26 @@ export const ICA_LEVELS: AirQualityLevelInfo[] = [
   },
 ];
 
+// Mismos breakpoints que backend/app/utils/ica.py::PM25_BREAKPOINTS (EPA / Res. 2254).
+// Se usa solo para proyectar (modo Pronóstico) desde la última lectura real de PM2.5.
+const PM25_BREAKPOINTS: ReadonlyArray<[number, number, number, number]> = [
+  [0.0, 12.0, 0, 50],
+  [12.1, 35.4, 51, 100],
+  [35.5, 55.4, 101, 150],
+  [55.5, 150.4, 151, 200],
+  [150.5, 250.4, 201, 300],
+  [250.5, 500.4, 301, 500],
+];
+
+/** ICA desde PM2.5 con la misma interpolación que el backend (calcular_ica_pm25). */
+export const icaDesdePm25 = (pm25: number): number => {
+  if (pm25 < 0) return 0;
+  for (const [cLow, cHigh, iLow, iHigh] of PM25_BREAKPOINTS) {
+    if (pm25 <= cHigh) return Math.round(((iHigh - iLow) / (cHigh - cLow)) * (pm25 - cLow) + iLow);
+  }
+  return 500;
+};
+
 export const getIcaLevel = (ica: number): AirQualityLevelInfo => {
   return ICA_LEVELS.find(l => ica >= l.range[0] && ica <= l.range[1]) ?? ICA_LEVELS[0];
 };

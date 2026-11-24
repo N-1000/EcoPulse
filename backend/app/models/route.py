@@ -88,7 +88,7 @@ class RouteResult(BaseModel):
     durations: Dict[str, int]
     co2Saved: int
     greenCoverage: int
-    averageICA: int
+    averageICA: Optional[int]  # None = sin nodos en vivo; nunca un ICA inventado
     healthScore: str
     destinationName: str
     # Tráfico

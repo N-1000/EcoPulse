@@ -48,3 +48,38 @@ def test_valores_ausentes_o_invalidos_salen_como_null_no_cero():
     assert m["humidity"] is None   # fuera de rango físico
     assert m["pm25"] is None
     assert m["co2"] is None
+
+
+# --- ica/level en None (no 0) para nodo inactivo o sin PM2.5 (EP-011) ---
+
+def test_nodo_activo_con_pm25_tiene_ica_numerico():
+    m = _nodo()["measurements"]
+    assert isinstance(m["ica"], int) and m["ica"] > 0
+    assert m["level"] == "buena"
+
+
+def test_nodo_inactivo_por_antiguedad_tiene_ica_y_level_null_no_cero():
+    n = _nodo(segundos_sin_datos=24 * 3600)
+    assert n["status"] == "inactivo"
+    assert n["measurements"]["ica"] is None
+    assert n["measurements"]["level"] is None
+    assert n["measurements"]["pm25"] == 10.0  # la última lectura real se conserva; el ICA actual no
+
+
+def test_nodo_sin_ninguna_lectura_valida_tiene_ica_null():
+    m = _nodo(temperatura=None, humedad=None, pm25_prom_1h=None, pm25_ultimo=None, co2=None)["measurements"]
+    assert m["ica"] is None and m["level"] is None
+
+
+def test_sensor_co2_activo_no_reporta_ica_cero():
+    # Un TTGO no mide PM2.5; si la columna llega en 0, eso no es "aire perfecto".
+    n = _nodo(sensor_id="TTGOT1TEST", pm25_prom_1h=0.0, pm25_ultimo=0.0, co2=600.0)
+    assert n["status"] == "activo" and n["sensorType"] == "co2"
+    assert n["measurements"]["ica"] is None and n["measurements"]["level"] is None
+
+
+def test_metricas_ignoran_ica_null_sin_romperse():
+    from app.utils.node_metrics import ica_promedio_ciudad, nodo_peor_ica
+    nodos = [_nodo(), _nodo(segundos_sin_datos=24 * 3600)]
+    assert nodo_peor_ica(nodos)["status"] == "activo"
+    assert ica_promedio_ciudad(nodos) == nodos[0]["measurements"]["ica"]

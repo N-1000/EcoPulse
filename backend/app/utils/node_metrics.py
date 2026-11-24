@@ -19,8 +19,37 @@ def _nodos_activos_con_ica(nodos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [
         n for n in nodos
         if (not n.get("status") or n.get("status") == "activo")
-        and n.get("measurements", {}).get("ica", 0) > 0
+        and (n.get("measurements", {}).get("ica") or 0) > 0  # None = sin dato
     ]
+
+
+def nodos_en_vivo(nodos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Nodos activos con ICA válido: los únicos cuyo ICA puede usarse como dato actual."""
+    return _nodos_activos_con_ica(nodos)
+
+
+def hay_datos_en_vivo(nodos: List[Dict[str, Any]]) -> bool:
+    """True si al menos un nodo está activo y midiendo un ICA válido."""
+    return bool(_nodos_activos_con_ica(nodos))
+
+
+def sin_datos_en_vivo_para_banner(nodos: List[Dict[str, Any]]) -> bool:
+    """Misma condición que `sinDatosEnVivo` en src/hooks/useNodes.ts: hay nodos y ninguno está activo."""
+    return bool(nodos) and not any(not n.get("status") or n.get("status") == "activo" for n in nodos)
+
+
+TEXTO_SIN_DATOS_EN_VIVO = (
+    "No hay datos en vivo de la red Tangara: ningún sensor está reportando ahora mismo, "
+    "así que no puedo darte un ICA actual."
+)
+
+
+def texto_sin_datos_en_vivo(nodos: List[Dict[str, Any]]) -> str:
+    """Aviso de que no hay datos en vivo, con la última lectura real si se conoce (nunca un ICA)."""
+    fechas = [n["lastUpdate"] for n in nodos if n.get("lastUpdate")]
+    if not fechas:
+        return TEXTO_SIN_DATOS_EN_VIVO
+    return f"{TEXTO_SIN_DATOS_EN_VIVO} La última lectura real fue el {max(fechas)}."
 
 
 def nodo_peor_ica(nodos: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:

@@ -139,6 +139,11 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
         # Detectar tipo de sensor por ID: TTGO miden CO2, ESP32 miden PM2.5
         sensor_type = "co2" if "TTGOT" in sensor_id else "pm25"
 
+        # ICA solo si el nodo está activo y midió PM2.5. Un nodo inactivo, o un
+        # sensor que no mide PM2.5 (TTGO de CO2), lleva ica/level en None: 0 es
+        # un ICA válido ("aire perfecto") y se pintaba como Buena (EP-011).
+        tiene_ica = status == "activo" and sensor_type == "pm25" and pm25_clean is not None
+
         nodos.append({
             "id": sensor_id,
             "name": f"Nodo {sensor_id[:6]}",
@@ -154,8 +159,8 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
                 "humidity": hum_clean,
                 "pm25": pm25_clean,
                 "co2": co2_clean,
-                "ica": ica_info["ica"] if tiene_lectura_valida else 0,
-                "level": ica_info["level"] if tiene_lectura_valida else "buena"
+                "ica": ica_info["ica"] if tiene_ica else None,
+                "level": ica_info["level"] if tiene_ica else None
             }
         })
     return nodos
@@ -224,22 +229,65 @@ def _refrescar_cache_en_background() -> None:
             _refresh_en_curso = False
 
 
+_CAMPOS_DE_IDENTIDAD = ("id", "name", "geohash", "coordinates", "comuna", "barrio", "sensorType")
+
+
+def _nodos_sin_datos_en_vivo() -> List[Dict[str, Any]]:
+    """Nodos conocidos, todos "inactivo" y sin mediciones: lo que se sirve cuando no hay datos reales.
+
+    La lista sale de la última respuesta real cacheada (si la hay) o del
+    catálogo de nodos de mock_data.py, pero de cada nodo se conserva solo su
+    identidad y ubicación. lastUpdate es el último timestamp REAL que se vio
+    de ese nodo, o None si nunca se vio uno; jamás uno fabricado. Todas las
+    mediciones, ica y level incluidos, van en None (la misma convención de
+    "inactivo" que get_nodos_clickhouse), para que ni la UI ni el chat
+    puedan presentar un valor como actual.
+    """
+    cache = _CACHE_NODOS[1] if _CACHE_NODOS is not None else None
+    base = cache if cache else TANGARA_NODES
+    ultima_real = {n.get("id"): n.get("lastUpdate") for n in (cache or [])}
+    nodos = []
+    for n in base:
+        nodo = {k: n[k] for k in _CAMPOS_DE_IDENTIDAD if k in n}
+        nodo["status"] = "inactivo"
+        nodo["lastUpdate"] = ultima_real.get(n.get("id"))
+        nodo["measurements"] = {
+            "temperature": None, "humidity": None, "pm25": None, "co2": None,
+            "ica": None, "level": None,
+        }
+        nodos.append(nodo)
+    return nodos
+
+
+def _sin_datos_reales(motivo: str) -> List[Dict[str, Any]]:
+    """Respuesta de los tres casos sin datos reales: nodos inactivos, o el mock solo si ECOPULSE_DEMO_DATA está activo."""
+    if get_settings().ecopulse_demo_data:
+        logger.warning("obtener_nodos_actuales: %s -- sirviendo datos de DEMO (ECOPULSE_DEMO_DATA activo)", motivo)
+        return TANGARA_NODES
+    logger.warning("obtener_nodos_actuales: %s -- todos los nodos como inactivos, sin mediciones", motivo)
+    return _nodos_sin_datos_en_vivo()
+
+
 def _obtener_nodos_sin_cache() -> List[Dict[str, Any]]:
-    """Nodos reales de ClickHouse con fallback a datos mock, logueando por qué.
+    """Nodos reales de ClickHouse; sin datos reales, nodos inactivos (nunca mock salvo modo demo).
 
     Antes duplicado en routers/nodes.py y routers/routing.py; un tercer
     call site (el dispatch de chat) hizo que valiera la pena extraerlo
     a una sola función en vez de copiar el bloque una vez más.
-    """
-    if ping():
-        try:
-            rows = get_nodos_clickhouse()
-            if rows:
-                return rows
-            logger.warning("obtener_nodos_actuales: fallback a datos mock — ClickHouse respondió sin filas")
-        except Exception as exc:
-            logger.error("obtener_nodos_actuales: fallback a datos mock — excepción consultando ClickHouse: %s", exc)
-    else:
-        logger.warning("obtener_nodos_actuales: fallback a datos mock — ping a ClickHouse falló")
 
-    return TANGARA_NODES
+    Antes, en los tres casos de abajo se devolvía TANGARA_NODES: 12 nodos
+    "activo" con lastUpdate de hace 2-13 minutos inventado y PM2.5 fijo. La
+    UI y el chat los presentaban como mediciones en vivo (EP-011).
+    """
+    if not ping():
+        return _sin_datos_reales("ping a ClickHouse falló")
+    try:
+        rows = get_nodos_clickhouse()
+    except Exception as exc:
+        logger.error("obtener_nodos_actuales: excepción consultando ClickHouse: %s", exc)
+        return _sin_datos_reales("excepción consultando ClickHouse")
+    if not rows:
+        return _sin_datos_reales(
+            f"ClickHouse respondió sin filas (ninguna lectura en {get_settings().node_lookback_days} días)"
+        )
+    return rows

@@ -209,8 +209,9 @@ export interface NodeMeasurements {
   humidity: number | null;     // % humedad relativa
   pm25: number | null;         // µg/m³
   co2?: number | null;         // ppm (opcional, reportado por nodos TTGO/CO2)
-  ica: number;            // Índice de Calidad del Aire derivado
-  level: AirQualityLevel;
+  // null = nodo inactivo o sensor sin PM2.5: no hay ICA. 0 es un ICA válido (aire perfecto), no "sin dato".
+  ica: number | null;     // Índice de Calidad del Aire derivado
+  level: AirQualityLevel | null;
 }
 
 /**
@@ -276,7 +277,7 @@ export interface RouteResult {
   durations: Record<TransportMode, number>;
   co2Saved: number;
   greenCoverage: number;
-  averageICA: number;
+  averageICA: number | null;  // null = sin nodos en vivo (el backend no inventa un ICA)
   healthScore: 'A+' | 'A' | 'B' | 'C';
   destinationName: string;
   // Tráfico

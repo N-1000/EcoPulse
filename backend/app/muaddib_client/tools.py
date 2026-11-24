@@ -26,7 +26,13 @@ from app.services.clickhouse_analytics import (
 from app.services.news_service import fetch_live_cali_news
 from app.services.routing import CALI_PARKS
 from app.utils.ica import nivel_label_desde_ica
-from app.utils.node_metrics import ica_promedio_ciudad, nodo_mejor_ica, nodo_peor_ica
+from app.utils.node_metrics import (
+    hay_datos_en_vivo,
+    ica_promedio_ciudad,
+    nodo_mejor_ica,
+    nodo_peor_ica,
+    texto_sin_datos_en_vivo,
+)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -37,7 +43,10 @@ from app.utils.node_metrics import ica_promedio_ciudad, nodo_mejor_ica, nodo_peo
 # ──────────────────────────────────────────────────────────────
 
 def mostrar_calidad_aire() -> str:
-    ica = ica_promedio_ciudad(obtener_nodos_actuales())
+    nodos = obtener_nodos_actuales()
+    if not hay_datos_en_vivo(nodos):
+        return texto_sin_datos_en_vivo(nodos)
+    ica = ica_promedio_ciudad(nodos)
     return f"El ICA promedio de Cali ahora mismo es {ica} ({nivel_label_desde_ica(ica)})."
 
 
@@ -66,7 +75,12 @@ def estado_sensores() -> str:
 
 
 def consejo_actividad_salud() -> str:
-    ica = ica_promedio_ciudad(obtener_nodos_actuales())
+    # Sin datos en vivo, ica_promedio_ciudad da 0 y esto recomendaba
+    # "condiciones ideales" sobre nada (EP-012): se avisa y no se recomienda.
+    nodos = obtener_nodos_actuales()
+    if not hay_datos_en_vivo(nodos):
+        return f"{texto_sin_datos_en_vivo(nodos)} Sin ese dato no te recomiendo ni desaconsejo actividad al aire libre."
+    ica = ica_promedio_ciudad(nodos)
     if ica <= 50:
         recomendacion = "condiciones ideales para actividad al aire libre"
     elif ica <= 100:
@@ -124,7 +138,7 @@ def ranking_nodos() -> str:
     nodos = obtener_nodos_actuales()
     peor = nodo_peor_ica(nodos)
     if not peor:
-        return "Ningún sensor está midiendo un ICA válido ahora mismo."
+        return texto_sin_datos_en_vivo(nodos)
     mejor = nodo_mejor_ica(nodos)
     texto = f"El nodo con peor aire ahora mismo es {peor['id']}, con un ICA de {peor['measurements']['ica']}."
     if mejor and mejor["id"] != peor["id"]:

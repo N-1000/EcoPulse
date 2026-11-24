@@ -28,7 +28,7 @@ from app.models.chat import ChatRequest, ChatResponse, UIAction
 from app.muaddib_client.tools import Herramienta
 from app.services.clickhouse_nodes import obtener_nodos_actuales
 from app.utils.ica import nivel_label_desde_ica
-from app.utils.node_metrics import nodo_peor_ica
+from app.utils.node_metrics import nodo_peor_ica, texto_sin_datos_en_vivo
 
 from intent_router.llm_engine import resolver_escaladas
 from intent_router.metrics import EventoDecision, hit_rate, log_decision
@@ -73,9 +73,10 @@ _BORONDO_TEXTS: list[str] = _RESPUESTAS["planes"]["borondo"]
 # ──────────────────────────────────────────────────────────────
 
 def _texto_nodo_mas_contaminado() -> str:
-    peor = nodo_peor_ica(obtener_nodos_actuales())
+    nodos = obtener_nodos_actuales()
+    peor = nodo_peor_ica(nodos)
     if not peor:
-        return "Ningún sensor está midiendo un ICA válido ahora mismo."
+        return texto_sin_datos_en_vivo(nodos)
     return f"El nodo con mayor contaminación ahora mismo es {peor['id']}, con un ICA de {peor['measurements']['ica']} ({nivel_label_desde_ica(peor['measurements']['ica'])}). Te llevo al mapa."
 
 
