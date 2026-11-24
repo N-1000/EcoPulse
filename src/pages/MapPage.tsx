@@ -8,6 +8,7 @@ import L from 'leaflet';
 import { useMapData } from '../hooks/useMapData';
 import { useCurrentWeather } from '../hooks/useCurrentWeather';
 import { getClusterMetrics } from '../utils/airQuality';
+import { isNodeInactive } from '../utils/nodeMetrics';
 import { mapWmoToWeather, type WeatherType } from '../utils/weatherCode';
 import { fetchGreenZones, fetchBestDestination, fetchHealthyRoute } from '../services/api';
 import type { NodeCluster, RoutePoint, RouteResult, TransportMode } from '../types';
@@ -69,7 +70,7 @@ const createClusterIcon = (cluster: NodeCluster, isSelected: boolean) => {
   }
 
   const color = metrics.color;
-  const inactive = cluster.nodes.every(n => n.status === 'inactivo');
+  const inactive = cluster.nodes.every(isNodeInactive);
   const isMulti = cluster.nodes.length > 1;
   const glowInfo = getGlowColor(color);
   const c = inactive ? '#9CA3AF' : color;

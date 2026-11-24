@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNodes } from './useNodes';
 import { clusterNodesByLocation } from '../utils/geo';
+import { isNodeReporting } from '../utils/nodeMetrics';
 import {
   CALI_CENTER,
   CALI_WMS_LAYERS,
@@ -33,7 +34,7 @@ export const useMapData = (): UseMapDataResult => {
 
   // 1. Filtrar nodos activos estrictamente
   const activeNodes = useMemo(() => {
-    return nodes.filter(n => !n.status || n.status === 'activo');
+    return nodes.filter(isNodeReporting);
   }, [nodes]);
 
   // 2. Clusterización unificada por geohash / ubicación

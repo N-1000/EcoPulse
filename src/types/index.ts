@@ -204,10 +204,11 @@ export type NodeStatus = 'activo' | 'inactivo' | 'calibracion';
 
 /** Últimas mediciones reportadas por un nodo. */
 export interface NodeMeasurements {
-  temperature: number;    // °C
-  humidity: number;       // % humedad relativa
-  pm25: number;           // µg/m³
-  co2?: number;           // ppm (opcional, reportado por nodos TTGO/CO2)
+  // `null` = el nodo no tiene lectura válida de esa variable ("sin dato"); nunca 0 de relleno.
+  temperature: number | null;  // °C
+  humidity: number | null;     // % humedad relativa
+  pm25: number | null;         // µg/m³
+  co2?: number | null;         // ppm (opcional, reportado por nodos TTGO/CO2)
   ica: number;            // Índice de Calidad del Aire derivado
   level: AirQualityLevel;
 }
@@ -234,6 +235,12 @@ export interface TangaraNode {
   lastUpdate: string;     // ISO 8601
   measurements: NodeMeasurements;
   sensorType?: 'pm25' | 'co2';  // tipo de sensor: pm25 (ESP32) o co2 (TTGO)
+  /**
+   * Origen de las mediciones que se muestran. Ausente o 'live' = lectura en vivo.
+   * 'forecast' = proyección estimada (NO es una medición) a partir de la última
+   * lectura real del nodo antes de que dejara de reportar.
+   */
+  dataSource?: 'live' | 'forecast';
 }
 
 /** Grupo de nodos que comparten la misma ubicación (mismo geohash). */

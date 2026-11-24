@@ -1,4 +1,5 @@
 import logging
+import math
 import threading
 import time
 from datetime import datetime, timedelta
@@ -22,6 +23,18 @@ def _clamp_o_null(valor, campo):
         return None
     lo, hi = RANGOS_VALIDOS[campo]
     return valor if lo <= valor <= hi else None
+
+def _elegir_pm25(promedio_1h: Any, ultimo: Any) -> Optional[float]:
+    """Promedio de la última hora si existe y es > 0; si no, la última lectura.
+
+    Con el nodo sin lecturas en la última hora, ClickHouse devuelve NULL (o NaN)
+    para el promedio: antes eso se propagaba hasta el API como 0.0 en vez de
+    caer a la última lectura conocida.
+    """
+    if promedio_1h is not None and not math.isnan(promedio_1h) and promedio_1h != 0:
+        return promedio_1h
+    return ultimo
+
 
 def decode_geohash(geohash: str) -> tuple[float, float]:
     """Decodes a geohash string to (latitude, longitude) coordinates."""
@@ -57,29 +70,34 @@ def decode_geohash(geohash: str) -> tuple[float, float]:
 
 def get_nodos_clickhouse() -> List[Dict[str, Any]]:
     """Consulta la última lectura de cada sensor desde la tabla real en ClickHouse."""
-    query = """
+    dias_ventana = int(get_settings().node_lookback_days)
+    query = f"""
         SELECT
             name AS sensor_id,
             argMax(geo, time)  AS geohash,
             argMax(tmp, time)  AS temperatura,
             argMax(hum, time)  AS humedad,
-            if(isNaN(avgIf(pm25, time >= now() - INTERVAL 1 HOUR AND pm25 >= 0 AND pm25 <= 500)) OR avgIf(pm25, time >= now() - INTERVAL 1 HOUR AND pm25 >= 0 AND pm25 <= 500) = 0, argMax(pm25, time), avgIf(pm25, time >= now() - INTERVAL 1 HOUR AND pm25 >= 0 AND pm25 <= 500)) AS pm25,
+            avgIf(pm25, time >= now() - INTERVAL 1 HOUR AND pm25 >= 0 AND pm25 <= 500) AS pm25_prom_1h,
+            argMax(pm25, time) AS pm25_ultimo,
             argMax(co2, time)  AS co2,
-            max(time)          AS ultima_lectura_utc
+            max(time)          AS ultima_lectura_utc,
+            dateDiff('second', max(time), now()) AS segundos_sin_datos
         FROM tangara_plata.plata_tangara_sensores
-        WHERE time >= now() - INTERVAL 48 HOUR
+        WHERE time >= now() - INTERVAL {dias_ventana} DAY
         GROUP BY name
     """
     resultado = query_rows(query)
+    umbral_inactividad_s = get_settings().node_stale_minutes * 60
     nodos = []
     for row in resultado:
         sensor_id = row.get("sensor_id")
         geohash = row.get("geohash")
         tmp = row.get("temperatura")
         hum = row.get("humedad")
-        pm25 = row.get("pm25")
+        pm25 = _elegir_pm25(row.get("pm25_prom_1h"), row.get("pm25_ultimo"))
         co2 = row.get("co2")
         ultima_utc = row.get("ultima_lectura_utc")
+        segundos_sin_datos = row.get("segundos_sin_datos")
         
         # Validar y limpiar valores
         tmp_clean = _clamp_o_null(tmp, "temperatura")
@@ -104,13 +122,19 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
         else:
             ultima_cali = str(ultima_utc)
             
-        # Determinar estado: un nodo está activo si mide PM2.5, CO2 o Temperatura
+        # Determinar estado: activo si mide PM2.5, CO2 o Temperatura Y su última
+        # lectura es reciente. Antes solo se miraba lo primero, así que un nodo
+        # mudo desde hacía horas seguía figurando como "activo".
         tiene_lectura_valida = (
             (pm25_clean is not None and pm25_clean > 0) or
             (co2_clean is not None and co2_clean > 0) or
             (tmp_clean is not None and tmp_clean > 0)
         )
-        status = "activo" if tiene_lectura_valida else "inactivo"
+        lectura_reciente = (
+            segundos_sin_datos is not None
+            and segundos_sin_datos <= umbral_inactividad_s
+        )
+        status = "activo" if (tiene_lectura_valida and lectura_reciente) else "inactivo"
 
         # Detectar tipo de sensor por ID: TTGO miden CO2, ESP32 miden PM2.5
         sensor_type = "co2" if "TTGOT" in sensor_id else "pm25"
@@ -126,10 +150,10 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
             "lastUpdate": ultima_cali,
             "sensorType": sensor_type,
             "measurements": {
-                "temperature": tmp_clean if tmp_clean is not None else 0.0,
-                "humidity": hum_clean if hum_clean is not None else 0.0,
-                "pm25": pm25_clean if pm25_clean is not None else 0.0,
-                "co2": co2_clean if co2_clean is not None else 0.0,
+                "temperature": tmp_clean,
+                "humidity": hum_clean,
+                "pm25": pm25_clean,
+                "co2": co2_clean,
                 "ica": ica_info["ica"] if tiene_lectura_valida else 0,
                 "level": ica_info["level"] if tiene_lectura_valida else "buena"
             }

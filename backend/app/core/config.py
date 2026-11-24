@@ -33,6 +33,18 @@ class Settings(BaseSettings):
     # y menos de 30s no reduce la carga sobre ClickHouse de forma notable.
     cache_ttl_seconds: int = 45
 
+    # Minutos sin lecturas tras los cuales un nodo pasa a "inactivo".
+    # Los sensores reportan cada ~30-60s; 30 min tolera cortes cortos de red
+    # sin marcar como activo a un nodo que lleva horas mudo.
+    node_stale_minutes: int = 30
+
+    # Ventana (días) en la que get_nodos_clickhouse busca la última lectura de
+    # cada sensor. Con 48 h, un corte de ingesta mayor a 2 días dejaba la
+    # consulta sin filas y /api/nodes caía a TANGARA_NODES (mock marcado como
+    # "activo"). Con 7 días los nodos mudos siguen saliendo, como "inactivo",
+    # con su última lectura real.
+    node_lookback_days: int = 7
+
     # --- IA (opcional, para el chatbot) ---
     anthropic_api_key: str | None = None
 
