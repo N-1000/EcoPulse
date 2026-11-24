@@ -8,30 +8,12 @@ import {
 } from 'lucide-react';
 import { levelColor, getIcaLevel } from '../../utils/airQuality';
 import { projectIca } from '../../utils/icaForecast';
+import { fetchDailyForecast, type DailyForecast } from '../../services/weatherForecast';
 import { fetchSeriePorSensor, type SeriePorSensorData, type SensorSerie } from '../../services/api';
 import type { NodeCluster, TangaraNode } from '../../types';
 
-const CALI_LAT = 3.4516;
-const CALI_LNG = -76.5320;
 const DAYS_OF_WEEK = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-interface DailyForecast {
-  time: string[];
-  precipitation_probability_max: number[];
-  wind_speed_10m_max: number[];
-  uv_index_max: number[];
-}
-
-const fetchDailyForecast = (): Promise<DailyForecast | null> =>
-  fetch(
-    'https://api.open-meteo.com/v1/forecast' +
-    `?latitude=${CALI_LAT}&longitude=${CALI_LNG}` +
-    '&daily=precipitation_probability_max,wind_speed_10m_max,uv_index_max' +
-    '&timezone=America%2FBogota'
-  )
-    .then(res => (res.ok ? res.json() : null))
-    .then(data => data?.daily ?? null)
-    .catch(() => null);
 
 const NodeForecastRows = ({ node }: { node: TangaraNode }) => {
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
@@ -151,7 +133,8 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
     inactivo:    { label: 'Inactivo',       dot: '#9CA3AF' },
     calibracion: { label: 'En calibración', dot: '#3B82F6' },
   };
-  const status = statusInfo[node.status];
+  const status =
+    node.dataSource === 'forecast' ? { label: 'Proyección estimada', dot: '#8B5CF6' } : statusInfo[node.status];
 
   const levelLabels: Record<string, string> = {
     'buena': 'Buena',
@@ -170,6 +153,10 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
       return d.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     } catch { return 'Sin datos'; }
   })();
+
+  /** Formatea una medición; null/undefined (sin lectura válida) se muestra como "Sin dato", nunca como 0. */
+  const formatMeasure = (value: number | null | undefined, format: (v: number) => string): string =>
+    value == null ? 'Sin dato' : format(value);
 
   const isCo2Node = node.sensorType === 'co2' || (node.measurements.ica === 0 && (node.measurements.co2 ?? 0) > 0);
   const CO2_BLUE = '#2563EB';
@@ -209,7 +196,7 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
             }}>
               {isCo2Node ? (
                 <>
-                  <span className="font-black text-xl leading-none" style={{ color: CO2_BLUE }}>{node.measurements.co2 ?? 0}</span>
+                  <span className="font-black text-xl leading-none" style={{ color: CO2_BLUE }}>{formatMeasure(node.measurements.co2, v => String(Math.round(v)))}</span>
                   <span className="text-[8px] font-bold tracking-wider mt-0.5" style={{ color: `${CO2_BLUE}bb` }}>ppm CO₂</span>
                 </>
               ) : (
@@ -246,14 +233,14 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
       <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
         <div className="grid grid-cols-2 gap-2">
           {(isCo2Node ? [
-            { icon: Thermometer, label: 'Temperatura', value: `${Number(node.measurements.temperature).toFixed(1)}°C`, c: '#F97316' },
-            { icon: Droplets,    label: 'Humedad',     value: `${Math.round(Number(node.measurements.humidity))}%`,   c: '#0284C7' },
-            { icon: Wind,        label: 'CO₂',         value: `${node.measurements.co2 ?? 0} ppm`,                   c: CO2_BLUE  },
+            { icon: Thermometer, label: 'Temperatura', value: formatMeasure(node.measurements.temperature, v => `${v.toFixed(1)}°C`), c: '#F97316' },
+            { icon: Droplets,    label: 'Humedad',     value: formatMeasure(node.measurements.humidity, v => `${Math.round(v)}%`),   c: '#0284C7' },
+            { icon: Wind,        label: 'CO₂',         value: formatMeasure(node.measurements.co2, v => `${Math.round(v)} ppm`),                   c: CO2_BLUE  },
             { icon: Activity,    label: 'Sensor',      value: 'TTGO CO₂',                                             c: CO2_BLUE  },
           ] : [
-            { icon: Thermometer, label: 'Temperatura', value: `${Number(node.measurements.temperature).toFixed(1)}°C`, c: '#F97316' },
-            { icon: Droplets,    label: 'Humedad',     value: `${Math.round(Number(node.measurements.humidity))}%`,    c: '#0284C7' },
-            { icon: Wind,        label: 'PM2.5',       value: `${Number(node.measurements.pm25).toFixed(1)} µg/m³`,   c: '#8B5CF6' },
+            { icon: Thermometer, label: 'Temperatura', value: formatMeasure(node.measurements.temperature, v => `${v.toFixed(1)}°C`), c: '#F97316' },
+            { icon: Droplets,    label: 'Humedad',     value: formatMeasure(node.measurements.humidity, v => `${Math.round(v)}%`),    c: '#0284C7' },
+            { icon: Wind,        label: 'PM2.5',       value: formatMeasure(node.measurements.pm25, v => `${v.toFixed(1)} µg/m³`),   c: '#8B5CF6' },
             { icon: Activity,    label: 'Nivel',       value: levelLabel,                                              c: color     },
           ]).map(row => (
             <div key={row.label} style={{

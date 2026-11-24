@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import FooterBar from './FooterBar';
 import EcopulseChat from '../chat/EcopulseChat';
 import FloatingChatButton from '../chat/FloatingChatButton';
+import DataModeBanner from '../common/DataModeBanner';
 import HomePage from '../../pages/HomePage';
 import type { PageId } from '../../types';
 
@@ -45,6 +46,7 @@ const Layout = () => {
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-hueso">
+      <DataModeBanner />
       <main className="flex-1 w-full">
         <HomePage onOpenChat={() => setIsChatOpen(true)} />
         <FooterBar onNavigate={handleNavigate} />

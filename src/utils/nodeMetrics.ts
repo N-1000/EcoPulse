@@ -19,24 +19,43 @@ export const EMPTY_METRICS: AirQualityMetrics = {
 };
 
 /**
+ * ¿El nodo aporta mediciones para mostrar? Activo en vivo, o con una proyección
+ * estimada (modo Pronóstico) cuando la red entera dejó de reportar.
+ */
+export const isNodeReporting = (n: TangaraNode): boolean =>
+  !n.status || n.status === 'activo' || n.dataSource === 'forecast';
+
+/** Nodo realmente inactivo: sin lectura en vivo y sin proyección mostrada. */
+export const isNodeInactive = (n: TangaraNode): boolean =>
+  n.status === 'inactivo' && (n.dataSource === undefined || n.dataSource === 'live');
+
+/** Descarta los "sin dato" (null/undefined) y los valores no positivos. */
+const positiveValues = (values: Array<number | null | undefined>): number[] =>
+  values.filter((v): v is number => v != null && v > 0);
+
+/** Promedio con un decimal; 0 si no hay valores (la UI lo trata como "sin datos"). */
+const averageOf = (values: number[]): number =>
+  values.length ? parseFloat((values.reduce((a, v) => a + v, 0) / values.length).toFixed(1)) : 0;
+
+/**
  * Calcula las métricas agregadas globales (ICA promedio, PM2.5, CO2, Temp, Hum)
  * a partir de una lista de nodos de la red.
  */
 export const calculateNodeMetrics = (nodes: TangaraNode[]): AirQualityMetrics => {
-  const activeNodes = nodes.filter(n => !n.status || n.status === 'activo');
+  const activeNodes = nodes.filter(isNodeReporting);
   if (activeNodes.length === 0) return { ...EMPTY_METRICS, updatedAt: new Date() };
 
   const icaNodes  = activeNodes.filter(n => n.measurements.ica > 0);
-  const pm25Nodes = activeNodes.filter(n => n.measurements.pm25 > 0);
-  const co2Nodes  = activeNodes.filter(n => (n.measurements.co2 ?? 0) > 0);
-  const tempNodes = activeNodes.filter(n => n.measurements.temperature > 0);
-  const humNodes  = activeNodes.filter(n => n.measurements.humidity > 0);
+  const pm25Values = positiveValues(activeNodes.map(n => n.measurements.pm25));
+  const co2Values  = positiveValues(activeNodes.map(n => n.measurements.co2));
+  const tempValues = positiveValues(activeNodes.map(n => n.measurements.temperature));
+  const humValues  = positiveValues(activeNodes.map(n => n.measurements.humidity));
 
   const avgICA  = icaNodes.length  ? Math.round(icaNodes.reduce((a, n) => a + n.measurements.ica, 0) / icaNodes.length) : 0;
-  const avgPM25 = pm25Nodes.length ? parseFloat((pm25Nodes.reduce((a, n) => a + n.measurements.pm25, 0) / pm25Nodes.length).toFixed(1)) : 0;
-  const avgCO2  = co2Nodes.length  ? parseFloat((co2Nodes.reduce((a, n) => a + (n.measurements.co2 ?? 0), 0) / co2Nodes.length).toFixed(1)) : 0;
-  const avgTemp = tempNodes.length ? parseFloat((tempNodes.reduce((a, n) => a + n.measurements.temperature, 0) / tempNodes.length).toFixed(1)) : 0;
-  const avgHum  = humNodes.length  ? parseFloat((humNodes.reduce((a, n) => a + n.measurements.humidity, 0) / humNodes.length).toFixed(1)) : 0;
+  const avgPM25 = averageOf(pm25Values);
+  const avgCO2  = averageOf(co2Values);
+  const avgTemp = averageOf(tempValues);
+  const avgHum  = averageOf(humValues);
 
   const icaLevelInfo = getIcaLevel(avgICA);
 

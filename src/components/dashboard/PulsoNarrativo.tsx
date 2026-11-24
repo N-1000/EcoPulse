@@ -5,7 +5,7 @@
 // ===================================================
 import { useMemo } from 'react';
 import { useNodes } from '../../hooks/useNodes';
-import { calculateNodeMetrics } from '../../utils/nodeMetrics';
+import { calculateNodeMetrics, isNodeReporting } from '../../utils/nodeMetrics';
 import { useCurrentWeather } from '../../hooks/useCurrentWeather';
 import { getIcaLevel } from '../../utils/airQuality';
 
@@ -42,7 +42,7 @@ const PulsoNarrativo = () => {
   const hour  = new Date().getHours();
   const cause = getCause(ica, hour);
   const trend = getTrend(hour);
-  const count = nodes.filter(n => !n.status || n.status === 'activo').length || nodes.length;
+  const count = nodes.filter(isNodeReporting).length || nodes.length;
 
   // Mientras carga — placeholder tipográfico, no skeleton de caja
   if (isLoading && ica === 0) {

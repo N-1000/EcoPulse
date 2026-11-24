@@ -6,6 +6,9 @@
 // nodo): la fórmula es la misma, solo cambia el ICA base de partida.
 // ===================================================
 
+import type { TangaraNode } from '../types';
+import { getIcaLevel } from '../constants/ica';
+
 export interface IcaForecastFactors {
   rainProbMax: number;
   windSpeedMax: number;
@@ -25,4 +28,33 @@ export const projectIca = (baseIca: number, factors: IcaForecastFactors, dayOffs
   if (factors.windSpeedMax > 13) icaFactor -= 0.10;
 
   return Math.max(12, Math.round(baseIca * (icaFactor + dayOffset * 0.04)));
+};
+
+/**
+ * Proyecta las mediciones de un nodo con la misma fórmula que projectIca,
+ * aplicada como factor multiplicativo (ICA y PM2.5 se escalan igual, así
+ * siguen siendo coherentes entre sí). No usa projectIca directamente sobre
+ * el ICA del nodo porque esa función fija un mínimo de 12 pensado para los
+ * días siguientes: inflaría artificialmente los nodos con aire muy limpio.
+ *
+ * Los nodos sin ICA (sensores CO₂) y las variables que no dependen del
+ * material particulado (CO₂, temperatura, humedad) se dejan intactos.
+ * El resultado queda marcado con dataSource 'forecast': es una estimación.
+ */
+export const projectNodeForecast = (node: TangaraNode, factors: IcaForecastFactors): TangaraNode => {
+  const { ica, pm25 } = node.measurements;
+  if (ica <= 0) return { ...node, dataSource: 'forecast' };
+
+  const factor = projectIca(100, factors, 0) / 100;
+  const projectedIca = Math.max(0, Math.round(ica * factor));
+  return {
+    ...node,
+    dataSource: 'forecast',
+    measurements: {
+      ...node.measurements,
+      ica: projectedIca,
+      level: getIcaLevel(projectedIca).level,
+      pm25: pm25 == null ? null : Math.round(pm25 * factor * 10) / 10,
+    },
+  };
 };
