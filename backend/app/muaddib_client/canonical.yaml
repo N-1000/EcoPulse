@@ -57,6 +57,7 @@ intents:
   # --- Accion real: el backend la resuelve hoy ---
 
   - name: consultar_calidad_aire
+    efecto: consulta
     action: ["show_air_quality"]
     sensitive: false
     phrases:
@@ -72,6 +73,7 @@ intents:
       - "mostrame que esta pasando"
 
   - name: localizar_sensor
+    efecto: consulta
     action: ["locate_sensor"]
     sensitive: false
     phrases:
@@ -80,6 +82,7 @@ intents:
       - "donde esta el sensor mas cercano"
 
   - name: consultar_estado_sensor
+    efecto: consulta
     action: ["get_sensor_health"]
     sensitive: false
     phrases:
@@ -90,6 +93,7 @@ intents:
       - "esta funcionando bien todo"
 
   - name: recomendar_actividad_salud
+    efecto: consulta
     action: ["get_health_activity_advice"]
     sensitive: false
     phrases:
@@ -98,6 +102,7 @@ intents:
       - "esta bien salir a hacer ejercicio con este aire"
 
   - name: pedir_ayuda_soporte
+    efecto: consulta
     action: ["show_help"]
     sensitive: false
     phrases:
@@ -111,6 +116,7 @@ intents:
   # --- Nuevas: capacidades reales sin intent declarado hasta ahora ---
 
   - name: consultar_noticias_ambientales
+    efecto: consulta
     action: ["show_news"]
     sensitive: false
     phrases:
@@ -120,6 +126,7 @@ intents:
       - "hay alguna alerta ambiental reportada en la prensa"
 
   - name: consultar_parques_zonas_verdes
+    efecto: consulta
     action: ["show_green_zones"]
     sensitive: false
     phrases:
@@ -129,6 +136,7 @@ intents:
       - "cual es el parque mas cercano"
 
   - name: consultar_tendencia_calidad_aire
+    efecto: consulta
     action: ["show_trend"]
     entity: ["periodo"]
     sensitive: false
@@ -142,6 +150,7 @@ intents:
       - "como ha cambiado el aire mes a mes"
 
   - name: consultar_serie_por_sensor
+    efecto: consulta
     action: ["show_sensor_series"]
     sensitive: false
     phrases:
@@ -151,6 +160,7 @@ intents:
       - "como se comporta cada sensor individualmente"
 
   - name: consultar_ranking_nodos_ica
+    efecto: consulta
     action: ["show_node_ranking"]
     sensitive: false
     phrases:
@@ -171,6 +181,7 @@ intents:
   # de EcoPulse sirva sin importar que nivel resolvio la Decision.
 
   - name: consultar_plan_pance
+    efecto: consulta
     action: ["show_quality_air"]
     entity: ["region"]
     sensitive: false
@@ -182,6 +193,7 @@ intents:
       - "me provoca un paseo a pance"
 
   - name: consultar_plan_caminata
+    efecto: consulta
     action: ["navigate"]
     sensitive: false
     phrases:
@@ -192,6 +204,7 @@ intents:
       - "que buena ruta hay para caminar"
 
   - name: consultar_plan_bici
+    efecto: consulta
     action: ["navigate"]
     sensitive: false
     phrases:
@@ -202,6 +215,7 @@ intents:
       - "que ruta hay para ir en bici"
 
   - name: consultar_plan_borondo
+    efecto: consulta
     action: ["navigate"]
     sensitive: false
     phrases:
@@ -215,6 +229,7 @@ intents:
   # EcoPulse escribe el texto de respuesta a partir del intent_name.
 
   - name: consultar_pronostico
+    efecto: consulta
     action: []
     sensitive: false
     phrases:
@@ -224,6 +239,7 @@ intents:
       - "va a subir el pm2.5 en la tarde o baja"
 
   - name: solicitar_reporte
+    efecto: consulta
     action: []
     sensitive: false
     phrases:
@@ -234,6 +250,7 @@ intents:
       - "quisiera un reporte completo de la ultima semana con los niveles de pm2.5 y ozono"
 
   - name: comparar_calidad_aire
+    efecto: consulta
     action: []
     sensitive: false
     phrases:
@@ -243,6 +260,7 @@ intents:
       - "entre el norte y el sur cual tiene mejor aire hoy"
 
   - name: activar_alerta
+    efecto: cambia
     action: []
     sensitive: true
     phrases:
@@ -252,6 +270,7 @@ intents:
       - "notificame cuando el aire este malo"
 
   - name: cancelar_alerta
+    efecto: cambia
     action: []
     sensitive: true
     phrases:
@@ -263,6 +282,7 @@ intents:
       - "nunca me avises los fines de semana"
 
   - name: configurar_alerta
+    efecto: cambia
     action: []
     sensitive: true
     phrases:
@@ -271,6 +291,7 @@ intents:
       - "subile el umbral a la alerta para que no suene tan seguido"
 
   - name: agregar_sensor
+    efecto: cambia
     action: []
     sensitive: true
     phrases:

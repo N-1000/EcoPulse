@@ -57,6 +57,7 @@ client: ecopulse
 
 intents:
   - name: saludo_cortesia
+    efecto: consulta
     phrases:
       - "hola"
       - "buenas tardes"
@@ -69,6 +70,7 @@ intents:
     sensitive: false
 
   - name: consultar_nodo_mas_contaminado
+    efecto: consulta
     phrases:
       - "nodo con mayor contaminacion"
       - "mas contaminado"
@@ -77,6 +79,7 @@ intents:
     sensitive: false
 
   - name: consultar_pronostico
+    efecto: consulta
     phrases:
       - "calidad del aire manana"
       - "pronostico"
@@ -86,6 +89,7 @@ intents:
     sensitive: false
 
   - name: consultar_ruta_saludable
+    efecto: consulta
     phrases:
       - "ruta es mas saludable"
       - "correr"
@@ -94,6 +98,7 @@ intents:
     sensitive: false
 
   - name: consultar_plan_pance
+    efecto: consulta
     phrases:
       - "pance"
     entity: ["region"]
@@ -101,6 +106,7 @@ intents:
     sensitive: false
 
   - name: consultar_plan_caminata
+    efecto: consulta
     phrases:
       - "caminata"
       - "caminar"
@@ -110,6 +116,7 @@ intents:
     sensitive: false
 
   - name: consultar_plan_bici
+    efecto: consulta
     phrases:
       - "bici"
       - "bicicleta"
@@ -118,6 +125,7 @@ intents:
     sensitive: false
 
   - name: consultar_plan_borondo
+    efecto: consulta
     phrases:
       - "borondo"
       - "turistico"
@@ -127,6 +135,7 @@ intents:
     sensitive: false
 
   - name: navegar_mapa
+    efecto: consulta
     phrases:
       - "mapa"
       - "nodos"
@@ -137,6 +146,7 @@ intents:
     sensitive: false
 
   - name: navegar_inicio
+    efecto: consulta
     phrases:
       - "inicio"
       - "home"
