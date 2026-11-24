@@ -276,7 +276,7 @@ export interface RouteResult {
   durations: Record<TransportMode, number>;
   co2Saved: number;
   greenCoverage: number;
-  averageICA: number;
+  averageICA: number | null;  // null = sin nodos en vivo (el backend no inventa un ICA)
   healthScore: 'A+' | 'A' | 'B' | 'C';
   destinationName: string;
   // Tráfico

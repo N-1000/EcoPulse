@@ -5,6 +5,7 @@ from app.services.geo import get_distance
 from app.services.osrm import fetch_osrm_route
 from app.services.mock_data import TANGARA_NODES
 from app.services.traffic import get_traffic_data, apply_traffic_to_health
+from app.utils.node_metrics import nodos_en_vivo
 
 # Parques curados de Cali con Bounding Boxes precisos (minLat, minLng), (maxLat, maxLng)
 def _gen_bounds(lat, lng, r_lat=0.0015, r_lng=0.0015):
@@ -31,7 +32,12 @@ CALI_PARKS = [
 def select_best_destination(origin: List[float], nodes: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Selecciona el mejor parque de destino para un nodo dado en Cali.
+
+    Solo cuenta el ICA de nodos en vivo: un nodo inactivo trae ica=0 y
+    haría ver limpio el aire de un parque sin ninguna medición. Sin nodos en
+    vivo no hay penalización por ICA y se elige solo por distancia.
     """
+    nodes = nodos_en_vivo(nodes)
     MIN_DIST = 0.3
     MAX_DIST = 3.5
     
@@ -86,7 +92,12 @@ async def calculate_healthy_route(
 ) -> Dict[str, Any]:
     """
     Calcula la ruta saludable completa OSRM y métricas ambientales en Python.
+
+    averageICA es None cuando no hay ningún nodo en vivo: antes salía 0 (de
+    los nodos inactivos) o 50 (constante sin nodos), y el puntaje de salud
+    se calculaba sobre ese número inventado. Sin ICA el puntaje no pasa de B.
     """
+    nodes = nodos_en_vivo(nodes)
     osrm_res = await fetch_osrm_route(start, end, transport_mode)
     if osrm_res:
         path = osrm_res["path"]
@@ -135,12 +146,14 @@ async def calculate_healthy_route(
                     closest_ica = node["measurements"]["ica"]
         total_ica += closest_ica
         
-    avg_ica = int(round(total_ica / len(sampled_path))) if sampled_path else 50
+    avg_ica = int(round(total_ica / len(sampled_path))) if (sampled_path and nodes) else None
     green_cov = int(round((green_points / len(sampled_path)) * 100)) if sampled_path else 0
     
     # Score base de salud (antes de penalizar por tráfico)
     health_score = "B"
-    if avg_ica <= 50 and green_cov >= 40:
+    if avg_ica is None:
+        pass
+    elif avg_ica <= 50 and green_cov >= 40:
         health_score = "A+"
     elif avg_ica <= 75 and green_cov >= 25:
         health_score = "A"

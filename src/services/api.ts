@@ -239,7 +239,7 @@ const _calcRouteLocal = (start: [number, number], end: [number, number], destNam
   const durations = { walk: Math.round(distance * 12), bike: Math.round(distance * 4), skates: Math.round(distance * 5), skateboard: Math.round(distance * 6), escooter: Math.round(distance * 3) };
   const greenPts = [start, end].filter(pt => CALI_PARKS.some(p => _haversine(pt[0], pt[1], p.lat, p.lng) < 0.4)).length;
   const greenCoverage = Math.round((greenPts / 2) * 100);
-  return { path: [start, end], distance, durations, co2Saved, greenCoverage, averageICA: 0, healthScore: 'B' as const, destinationName: destName, trafficRisk: 'low' as const, trafficLabel: 'Sin datos de tráfico', rushHour: false };
+  return { path: [start, end], distance, durations, co2Saved, greenCoverage, averageICA: null, healthScore: 'B' as const, destinationName: destName, trafficRisk: 'low' as const, trafficLabel: 'Sin datos de tráfico', rushHour: false };
 };
 
 // --------------------------------------------------

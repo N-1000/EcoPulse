@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     # con su última lectura real.
     node_lookback_days: int = 7
 
+    # Datos de demostración (services/mock_data.py::TANGARA_NODES) cuando
+    # ClickHouse no responde, no tiene filas o falla. Default False: en
+    # producción, sin datos reales los nodos salen "inactivo" y sin
+    # mediciones; nunca se sirven lecturas fabricadas como si fueran en vivo.
+    # Poner ECOPULSE_DEMO_DATA=1 solo para demos o desarrollo sin ClickHouse.
+    ecopulse_demo_data: bool = False
+
     # --- IA (opcional, para el chatbot) ---
     anthropic_api_key: str | None = None
 
