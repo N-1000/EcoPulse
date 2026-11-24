@@ -120,10 +120,14 @@ const MapaComunas = ({ onExploreMap }: MapaComunasProps) => {
               >
                 <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>
                   <div className="text-xs font-bold p-1">
-                    {cluster.nodes.every((n: TangaraNode) => n.sensorType === 'co2' || (n.measurements.ica === 0 && (n.measurements.co2 ?? 0) > 0))
-                      ? `${cluster.nodes.length} Sensor CO₂ · ${Math.round(cluster.nodes.reduce((s: number, n: TangaraNode) => s + (n.measurements.co2 ?? 0), 0) / cluster.nodes.length)} ppm`
-                      : `${cluster.nodes.length} Sensor(es) · ICA: ${Math.round(cluster.nodes.filter((n: TangaraNode) => n.measurements.ica > 0).reduce((s: number, n: TangaraNode) => s + n.measurements.ica, 0) / Math.max(cluster.nodes.filter((n: TangaraNode) => n.measurements.ica > 0).length, 1))}`
-                    }
+                    {(() => {
+                      // Mismo valor que el marcador (getClusterMetrics): "–" cuando no hay dato, nunca 0.
+                      const m = getClusterMetrics(cluster);
+                      const valor = typeof m.displayValue === 'number' ? m.displayValue : 'Sin dato';
+                      return m.isCo2
+                        ? `${cluster.nodes.length} Sensor CO₂ · ${valor}${typeof m.displayValue === 'number' ? ' ppm' : ''}`
+                        : `${cluster.nodes.length} Sensor(es) · ICA: ${valor}`;
+                    })()}
                   </div>
                 </Tooltip>
               </Marker>

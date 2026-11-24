@@ -139,6 +139,11 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
         # Detectar tipo de sensor por ID: TTGO miden CO2, ESP32 miden PM2.5
         sensor_type = "co2" if "TTGOT" in sensor_id else "pm25"
 
+        # ICA solo si el nodo está activo y midió PM2.5. Un nodo inactivo, o un
+        # sensor que no mide PM2.5 (TTGO de CO2), lleva ica/level en None: 0 es
+        # un ICA válido ("aire perfecto") y se pintaba como Buena (EP-011).
+        tiene_ica = status == "activo" and sensor_type == "pm25" and pm25_clean is not None
+
         nodos.append({
             "id": sensor_id,
             "name": f"Nodo {sensor_id[:6]}",
@@ -154,8 +159,8 @@ def get_nodos_clickhouse() -> List[Dict[str, Any]]:
                 "humidity": hum_clean,
                 "pm25": pm25_clean,
                 "co2": co2_clean,
-                "ica": ica_info["ica"] if tiene_lectura_valida else 0,
-                "level": ica_info["level"] if tiene_lectura_valida else "buena"
+                "ica": ica_info["ica"] if tiene_ica else None,
+                "level": ica_info["level"] if tiene_ica else None
             }
         })
     return nodos
@@ -233,10 +238,10 @@ def _nodos_sin_datos_en_vivo() -> List[Dict[str, Any]]:
     La lista sale de la última respuesta real cacheada (si la hay) o del
     catálogo de nodos de mock_data.py, pero de cada nodo se conserva solo su
     identidad y ubicación. lastUpdate es el último timestamp REAL que se vio
-    de ese nodo, o None si nunca se vio uno; jamás uno fabricado. Las
-    mediciones van en None (con ica 0, la convención de "inactivo" de
-    get_nodos_clickhouse), para que ni la UI ni el chat puedan presentar
-    un valor como actual.
+    de ese nodo, o None si nunca se vio uno; jamás uno fabricado. Todas las
+    mediciones, ica y level incluidos, van en None (la misma convención de
+    "inactivo" que get_nodos_clickhouse), para que ni la UI ni el chat
+    puedan presentar un valor como actual.
     """
     cache = _CACHE_NODOS[1] if _CACHE_NODOS is not None else None
     base = cache if cache else TANGARA_NODES
@@ -248,7 +253,7 @@ def _nodos_sin_datos_en_vivo() -> List[Dict[str, Any]]:
         nodo["lastUpdate"] = ultima_real.get(n.get("id"))
         nodo["measurements"] = {
             "temperature": None, "humidity": None, "pm25": None, "co2": None,
-            "ica": 0, "level": "buena",
+            "ica": None, "level": None,
         }
         nodos.append(nodo)
     return nodos

@@ -31,7 +31,8 @@ def _assert_todos_inactivos_sin_dato(nodos):
         assert n["lastUpdate"] is None, n["id"]
         m = n["measurements"]
         assert (m["temperature"], m["humidity"], m["pm25"], m["co2"]) == (None, None, None, None), n["id"]
-        assert m["ica"] == 0, n["id"]
+        assert m["ica"] is None, n["id"]  # 0 es un ICA válido: sin dato es None
+        assert m["level"] is None, n["id"]
     assert sin_datos_en_vivo_para_banner(nodos) is True
 
 
@@ -80,7 +81,8 @@ def test_con_cache_previa_conserva_el_ultimo_timestamp_real_y_no_sus_mediciones(
     assert nodo["id"] == "D29ESP32REAL"
     assert nodo["status"] == "inactivo"
     assert nodo["lastUpdate"] == "2026-11-20T08:15:00"
-    assert nodo["measurements"]["pm25"] is None and nodo["measurements"]["ica"] == 0
+    assert nodo["measurements"]["pm25"] is None
+    assert nodo["measurements"]["ica"] is None and nodo["measurements"]["level"] is None
 
 
 def test_ningun_lastupdate_es_fabricado_aunque_el_catalogo_lo_tenga():

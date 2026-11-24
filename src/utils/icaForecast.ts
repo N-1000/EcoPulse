@@ -7,7 +7,7 @@
 // ===================================================
 
 import type { TangaraNode } from '../types';
-import { getIcaLevel } from '../constants/ica';
+import { getIcaLevel, icaDesdePm25 } from '../constants/ica';
 
 export interface IcaForecastFactors {
   rainProbMax: number;
@@ -42,11 +42,15 @@ export const projectIca = (baseIca: number, factors: IcaForecastFactors, dayOffs
  * El resultado queda marcado con dataSource 'forecast': es una estimación.
  */
 export const projectNodeForecast = (node: TangaraNode, factors: IcaForecastFactors): TangaraNode => {
-  const { ica, pm25 } = node.measurements;
-  if (ica <= 0) return { ...node, dataSource: 'forecast' };
+  // Se proyecta desde el último PM2.5 real, no desde el ICA: un nodo inactivo
+  // llega con ica = null (sin dato), pero conserva su última lectura de PM2.5.
+  // Sin PM2.5 (sensor CO₂ o nodo sin ninguna lectura) no hay nada que proyectar.
+  const { pm25 } = node.measurements;
+  if (pm25 == null || pm25 <= 0 || node.sensorType === 'co2') return { ...node, dataSource: 'forecast' };
 
   const factor = projectIca(100, factors, 0) / 100;
-  const projectedIca = Math.max(0, Math.round(ica * factor));
+  const projectedPm25 = Math.round(pm25 * factor * 10) / 10;
+  const projectedIca = icaDesdePm25(projectedPm25);
   return {
     ...node,
     dataSource: 'forecast',
@@ -54,7 +58,7 @@ export const projectNodeForecast = (node: TangaraNode, factors: IcaForecastFacto
       ...node.measurements,
       ica: projectedIca,
       level: getIcaLevel(projectedIca).level,
-      pm25: pm25 == null ? null : Math.round(pm25 * factor * 10) / 10,
+      pm25: projectedPm25,
     },
   };
 };

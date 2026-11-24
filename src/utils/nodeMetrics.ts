@@ -45,13 +45,13 @@ export const calculateNodeMetrics = (nodes: TangaraNode[]): AirQualityMetrics =>
   const activeNodes = nodes.filter(isNodeReporting);
   if (activeNodes.length === 0) return { ...EMPTY_METRICS, updatedAt: new Date() };
 
-  const icaNodes  = activeNodes.filter(n => n.measurements.ica > 0);
+  const icaValues = positiveValues(activeNodes.map(n => n.measurements.ica));
   const pm25Values = positiveValues(activeNodes.map(n => n.measurements.pm25));
   const co2Values  = positiveValues(activeNodes.map(n => n.measurements.co2));
   const tempValues = positiveValues(activeNodes.map(n => n.measurements.temperature));
   const humValues  = positiveValues(activeNodes.map(n => n.measurements.humidity));
 
-  const avgICA  = icaNodes.length  ? Math.round(icaNodes.reduce((a, n) => a + n.measurements.ica, 0) / icaNodes.length) : 0;
+  const avgICA  = icaValues.length ? Math.round(icaValues.reduce((a, v) => a + v, 0) / icaValues.length) : 0;
   const avgPM25 = averageOf(pm25Values);
   const avgCO2  = averageOf(co2Values);
   const avgTemp = averageOf(tempValues);

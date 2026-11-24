@@ -28,10 +28,14 @@ const NodeForecastRows = ({ node }: { node: TangaraNode }) => {
     return () => { active = false; };
   }, []);
 
+  // Sin ICA (nodo inactivo o sensor sin PM2.5) no hay base: antes se proyectaba desde un 22 inventado.
+  if (node.measurements.ica == null) {
+    return <div className="text-[10px] text-gray-400 text-center py-3">Sin datos en vivo de este nodo: no hay ICA desde el cual proyectar.</div>;
+  }
+  const baseIca = node.measurements.ica;
+
   if (status === 'loading') return <div className="text-[10px] text-gray-400 text-center py-3 animate-pulse">Cargando proyección…</div>;
   if (status === 'error' || !daily) return <div className="text-[10px] text-gray-400 text-center py-3">No se pudo cargar la proyección. Intentá de nuevo más tarde.</div>;
-
-  const baseIca = node.measurements.ica > 0 ? node.measurements.ica : 22;
 
   return (
     <div>
@@ -144,7 +148,7 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
     'muy-dañina': 'Muy Dañina',
     'peligrosa': 'Peligrosa',
   };
-  const levelLabel = levelLabels[node.measurements.level] ?? node.measurements.level;
+  const levelLabel = node.measurements.level == null ? 'Sin dato' : (levelLabels[node.measurements.level] ?? node.measurements.level);
 
   const lastUpdate = (() => {
     try {
@@ -158,7 +162,7 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
   const formatMeasure = (value: number | null | undefined, format: (v: number) => string): string =>
     value == null ? 'Sin dato' : format(value);
 
-  const isCo2Node = node.sensorType === 'co2' || (node.measurements.ica === 0 && (node.measurements.co2 ?? 0) > 0);
+  const isCo2Node = node.sensorType === 'co2' || (node.measurements.ica == null && (node.measurements.co2 ?? 0) > 0);
   const CO2_BLUE = '#2563EB';
   const headerColor = isCo2Node ? CO2_BLUE : color;
 
@@ -201,7 +205,7 @@ export const NodeDetailPanel = ({ cluster, onClose, onStartHealthyRoute }: NodeD
                 </>
               ) : (
                 <>
-                  <span className="font-black text-xl leading-none" style={{ color }}>{node.measurements.ica}</span>
+                  <span className="font-black text-xl leading-none" style={{ color }}>{formatMeasure(node.measurements.ica, v => String(v))}</span>
                   <span className="text-[8px] font-bold tracking-wider mt-0.5" style={{ color: `${color}bb` }}>ICA</span>
                 </>
               )}

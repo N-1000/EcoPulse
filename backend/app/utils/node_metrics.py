@@ -19,7 +19,7 @@ def _nodos_activos_con_ica(nodos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [
         n for n in nodos
         if (not n.get("status") or n.get("status") == "activo")
-        and n.get("measurements", {}).get("ica", 0) > 0
+        and (n.get("measurements", {}).get("ica") or 0) > 0  # None = sin dato
     ]
 
 

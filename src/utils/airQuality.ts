@@ -32,7 +32,8 @@ export const icaFromPm25 = (pm25: number): number => {
 };
 
 /** Color HEX principal de cada nivel ICA. */
-export const levelColor = (level: AirQualityLevel | string): string => {
+export const levelColor = (level: AirQualityLevel | string | null): string => {
+  if (level == null) return SIN_DATO_GRIS;
   const map: Record<string, string> = {
     'buena':                    '#16A34A',
     'moderada':                 '#CA8A04',
@@ -57,16 +58,21 @@ export const badgeClass = (level: AirQualityLevel | string): string => {
   return map[level] ?? 'bg-gray-100 text-gray-700';
 };
 
+/** Color de un nodo o clúster sin dato (ica/level null): ni verde de "Buena" ni ningún nivel. */
+export const SIN_DATO_GRIS = '#9CA3AF';
+
 /** Estandariza el cálculo de métricas visuales para clústeres de nodos en todos los mapas. */
 export const getClusterMetrics = (cluster: { nodes: TangaraNode[] }) => {
   const isCo2Cluster = cluster.nodes.every(
-    n => n.sensorType === 'co2' || (n.measurements.ica === 0 && (n.measurements.co2 ?? 0) > 0)
+    n => n.sensorType === 'co2' || (n.measurements.ica == null && (n.measurements.co2 ?? 0) > 0)
   );
 
   if (isCo2Cluster) {
-    const avgCo2 = Math.round(
-      cluster.nodes.reduce((sum, n) => sum + (n.measurements.co2 ?? 0), 0) / cluster.nodes.length
-    );
+    const co2Values = cluster.nodes.map(n => n.measurements.co2).filter((v): v is number => v != null && v > 0);
+    if (!co2Values.length) {
+      return { isCo2: true, displayValue: '–', unit: 'ppm', level: null, color: SIN_DATO_GRIS };
+    }
+    const avgCo2 = Math.round(co2Values.reduce((sum, v) => sum + v, 0) / co2Values.length);
     return {
       isCo2: true,
       displayValue: avgCo2,
@@ -76,10 +82,12 @@ export const getClusterMetrics = (cluster: { nodes: TangaraNode[] }) => {
     };
   }
 
-  const icaNodes = cluster.nodes.filter(n => n.measurements.ica > 0);
-  const avgIca = icaNodes.length
-    ? Math.round(icaNodes.reduce((sum, n) => sum + n.measurements.ica, 0) / icaNodes.length)
-    : 0;
+  const icaValues = cluster.nodes.map(n => n.measurements.ica).filter((v): v is number => v != null && v > 0);
+  if (!icaValues.length) {
+    // Ningún nodo del clúster tiene ICA: se muestra "–" en gris, no "0" en verde (EP-011).
+    return { isCo2: false, displayValue: '–', unit: 'ICA', level: null, color: SIN_DATO_GRIS };
+  }
+  const avgIca = Math.round(icaValues.reduce((sum, v) => sum + v, 0) / icaValues.length);
 
   const icaInfo = getIcaLevel(avgIca);
   return {
