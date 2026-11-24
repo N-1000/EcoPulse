@@ -38,4 +38,19 @@ slowapi==0.1.10
 # el config_loader.py viejo lo ignora en silencio (confirmado: con el pin
 # anterior, 2 tests de backend/tests/test_aclaracion_limitacion.py fallan).
 # 2026-11-06: este es el pin que se publica en dev; se mantiene sin cambios.
-git+https://github.com/N-1000/MuadDib.git@e45cd99dc98ad37fd6c88be26a291290ccfcccce#egg=muaddib
+#
+# 2026-11-24: bump a bd030b9 (master de MuadDib, merge del PR #6 del 23/11;
+# mismo árbol que dev a6df3a5) -- 162 commits adelante de e45cd99 (EP-009).
+# Cambios de contrato que obligaron a tocar EcoPulse:
+#  - efecto: consulta | cambia obligatorio en cada intent (hallazgo 50): las
+#    4 intenciones de alertas/sensores son `cambia` y nunca se resuelven en
+#    Nivel 0/1 (escalan con efecto_cambia_requiere_confirmacion).
+#  - cargar_config(..., herramientas) valida el registro y estampa su huella
+#    (hallazgos 26 y 60); las tres compuertas manuales del loader se fueron.
+#  - esquema cerrado: clave desconocida, sensitive/entity distintos entre
+#    Nivel 0 y canonical, o sensitive ausente -> ConfigError (hallazgo 71).
+#  - el modelo de embeddings es obligatorio (hallazgo 29): sin modelo el
+#    chat queda deshabilitado y /health/ready da 503, no degradado en silencio.
+# Con este pin, rules_nivel0.yaml y canonical.yaml cargan sin ConfigError
+# (verificado al arrancar el router real).
+git+https://github.com/N-1000/MuadDib.git@bd030b92964813b09d32ae139c8e769ce64603f6#egg=muaddib
